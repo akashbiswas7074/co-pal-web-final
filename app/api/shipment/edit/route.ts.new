@@ -1,0 +1,161 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/lib/database/connect';
+import Order from '@/lib/database/models/order.model';
+
+/**
+ * Simplified Shipment Edit API
+ * Updates shipment details in the database (for demo purposes)
+ * In production, this would also update Delhivery via their edit API
+ */
+
+interface ShipmentEditData {
+  orderId: string;
+  weight: number;
+  dimensions: {
+    length: number;
+    width: number;
+    height: number;
+  };
+  shippingMode: 'Surface' | 'Express';
+  pickupLocation: string;
+}
+
+// POST: Edit shipment details
+export async function POST(request: NextRequest) {
+  console.log('[Shipment Edit API] POST request received');
+  
+  try {
+    await connectToDatabase();
+    
+    const body: ShipmentEditData = await request.json();
+    const { orderId, weight, dimensions, shippingMode, pickupLocation } = body;
+
+    console.log('[Shipment Edit API] Request body:', body);
+
+    // Validate required parameters
+    if (!orderId) {
+      return NextResponse.json(
+        { success: false, error: 'Order ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return NextResponse.json(
+        { success: false, error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if shipment exists
+    if (!order.shipmentCreated || !order.shipmentDetails) {
+      return NextResponse.json(
+        { success: false, error: 'No shipment found to edit' },
+        { status: 400 }
+      );
+    }
+
+    // Check if shipment can be edited (status restrictions)
+    const editableStatuses = [
+      'Confirmed',
+      'PickedUp', 
+      'Dispatched',
+      'InTransit',
+      'OutForDelivery'
+    ];
+    
+    if (!editableStatuses.includes(order.status)) {
+      return NextResponse.json({
+        success: false,
+        error: `Shipment cannot be edited in ${order.status} status. Editable statuses: ${editableStatuses.join(', ')}`
+      }, { status: 400 });
+    }
+
+    // In a real implementation, you would call Delhivery's Edit API here
+    // For demo purposes, we'll just update the database
+    
+    // Update shipment details in database
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      {
+        'shipmentDetails.weight': weight,
+        'shipmentDetails.dimensions': dimensions,
+        'shipmentDetails.shippingMode': shippingMode,
+        'shipmentDetails.pickupLocation': pickupLocation,
+        'shipmentDetails.lastUpdated': new Date()
+      },
+      { new: true }
+    );
+
+    console.log('[Shipment Edit API] Order updated successfully');
+
+    // In production, you would also update Delhivery:
+    /*
+    const delhiveryEditResponse = await updateDelhiveryShipment({
+      waybill: order.shipmentDetails.waybillNumbers[0],
+      weight: weight.toString(),
+      shipment_width: dimensions.width.toString(),
+      shipment_height: dimensions.height.toString(),
+      shipment_length: dimensions.length.toString(),
+      shipping_mode: shippingMode
+    });
+    */
+
+    return NextResponse.json({
+      success: true,
+      message: 'Shipment details updated successfully',
+      data: {
+        orderId,
+        updatedShipmentDetails: updatedOrder?.shipmentDetails,
+        // delhiveryResponse: delhiveryEditResponse // In production
+      }
+    });
+
+  } catch (error: any) {
+    console.error('[Shipment Edit API] Error:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: error.message || 'Failed to edit shipment details'
+    }, { status: 500 });
+  }
+}
+
+// Helper function for Delhivery API call (for production use)
+async function updateDelhiveryShipment(editData: any) {
+  const token = process.env.DELHIVERY_AUTH_TOKEN;
+  if (!token) {
+    throw new Error('Delhivery auth token not configured');
+  }
+
+  const apiUrl = 'https://track.delhivery.com/api/cmu/update.json';
+  
+  console.log('[Shipment Edit API] Calling Delhivery edit API:', editData);
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Token ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify(editData)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[Shipment Edit API] Delhivery API error:', {
+      status: response.status,
+      statusText: response.statusText,
+      body: errorText
+    });
+    throw new Error(`Delhivery API error: ${response.status} - ${errorText}`);
+  }
+
+  const responseData = await response.json();
+  console.log('[Shipment Edit API] Delhivery response:', responseData);
+  
+  return responseData;
+}

@@ -1,0 +1,1883 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useForm } from "@mantine/form";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader, Check, X, Plus, Trash2, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { useCartStore } from "@/store/cart";
+import { applyCoupon } from "@/lib/database/actions/user.actions";
+import { getUserById } from "@/lib/database/actions/user.actions";
+import { getSavedCartForUser } from "@/lib/database/actions/cart.actions";
+import { calculateDelhiveryShipping } from "@/lib/utils/shipping";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
+import ShippingInfo from "./ShippingInfo";
+import { ExpectedDeliverySimple } from '@/components/shared/delivery/ExpectedDelivery';
+import { calculateChargeableWeight } from "@/lib/utils/shippingCalculator";
+
+// Define interfaces for better type safety
+interface Address {
+  _id: string;
+  address1: string; // Changed from street
+  address2?: string; // Added
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  isDefault?: boolean;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string; // Added phoneNumber
+}
+
+interface CartProduct {
+  _id?: string; // May not be present initially if added client-side
+  _uid?: string; // Unique identifier for cart item instance
+  product: string; // Product ObjectId as string
+  name: string;
+  image: string;
+  price: number;
+  originalPrice?: number; // For calculating savings
+  quantity: number;
+  qty?: number; // Handle potential inconsistency
+  size?: string;
+  // Add other relevant product details displayed in summary
+}
+
+interface CartData {
+  products: CartProduct[];
+  cartTotal?: number; // Optional total from backend
+}
+
+interface UserData {
+  _id: string;
+  firstName?: string; // Changed from name
+  lastName?: string; // Added
+  email?: string;
+  phone?: string; // Keep phone if it's a separate field in UserData
+  username?: string; // Added username as it's returned by getUserById
+  image?: string; // Added image
+  // Add other relevant user fields like provider, emailVerified if needed
+}
+
+// Define CheckoutData interface matching the backend
+interface CheckoutData {
+  userId: string;
+  cartItems: CartProduct[]; // Use the defined interface
+  shippingAddress: {
+    firstName: string;
+    lastName: string;
+    address1: string;
+    address2?: string; // Added
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    phone: string; // Added phone
+  };
+  paymentMethod: 'cod' | 'razorpay'; // Updated: Only COD or Razorpay
+  itemsPrice: number;
+  shippingPrice: number;
+  taxPrice?: number;
+  totalPrice: number;
+  couponCode?: string | null;
+  discountAmount?: number;
+}
+
+export default function CheckoutComponent() {
+  const [step, setStep] = useState(1);
+  const [user, setUser] = useState<UserData | null>(null); // Use UserData interface
+  const [address, setAddress] = useState<Address | null>(null); // Use Address interface
+  const [userAddresses, setUserAddresses] = useState<Address[]>([]); // Use Address interface
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [coupon, setCoupon] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutData['paymentMethod']>("razorpay"); // Default to Razorpay or COD
+  const [couponError, setCouponError] = useState("");
+  const [totalAfterDiscount, setTotalAfterDiscount] = useState<number | null>(null); // Store as number
+  const [discount, setDiscount] = useState(0);
+  const [data, setData] = useState<CartData>({ products: [] }); // Use CartData interface
+  const [isLoading, setIsLoading] = useState(true);
+  const [subTotal, setSubtotal] = useState<number>(0);
+  const [shippingCost, setShippingCost] = useState<number>(0);
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState<boolean>(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
+  const [taxCost, setTaxCost] = useState<number>(0); // Example: No tax
+  const [placeOrderLoading, setPlaceOrderLoading] = useState<boolean>(false);
+  const [addAddressLoading, setAddAddressLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // GST-related states
+  const [isGstInvoice, setIsGstInvoice] = useState(false);
+  const [gstDetails, setGstDetails] = useState({
+    gstin: "",
+    businessName: "",
+    businessAddress: ""
+  });
+  const [isValidatingGst, setIsValidatingGst] = useState(false);
+  const [gstErrorMessage, setGstErrorMessage] = useState("");
+
+  // Updated form to match profile page address format
+  const form = useForm({
+    initialValues: {
+      address1: "", // Changed from street
+      address2: "", // Added
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "India",
+      isDefault: false,
+      firstName: "",
+      lastName: "",
+      phone: "", // Added phone
+    },
+    validate: {
+      address1: (value) => // Changed from street
+        value.trim().length < 5 ? "Street address must be at least 5 characters" : null,
+      city: (value) =>
+        value.trim().length < 2 ? "City must be at least 2 letters" : null,
+      state: (value) =>
+        value.trim().length < 2 ? "State must be at least 2 letters" : null,
+      zipCode: (value) =>
+        /^\d{6}$/.test(value.trim()) ? null : "Zip Code must be 6 digits", // India specific example
+      firstName: (value) =>
+        value.trim().length < 2 ? "First name must be at least 2 letters" : null,
+      lastName: (value) =>
+        value.trim().length < 2 ? "Last name must be at least 2 letters" : null,
+      phone: (value) =>
+        /^\+?[1-9]\d{1,14}$/.test(value.trim()) ? null : "Invalid phone number", // Basic phone validation
+    },
+  });
+
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id;
+  const router = useRouter();
+  const { emptyCart } = useCartStore();
+
+  // --- Data Fetching Effect ---
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!userId) {
+        console.log("[CheckoutComponent] fetchData: No userId, exiting.");
+        setIsLoading(false);
+        setCheckoutError("Authentication required. Please sign in again.");
+        return;
+      }
+
+      console.log(`[CheckoutComponent] Fetching data for userId: ${userId}`); // Log userId
+      setIsLoading(true);
+      setCheckoutError(null); // Clear errors on reload
+
+      try {
+        // Fetch cart, user, and addresses in parallel for efficiency
+        const [cartResult, userResult] = await Promise.allSettled([
+          getSavedCartForUser(userId),
+          getUserById(userId),
+        ]);
+
+        // Process Cart Data
+        if (cartResult.status === 'fulfilled' && cartResult.value?.success && cartResult.value.cart) {
+          const cartData = cartResult.value.cart;
+          setData(cartData);
+          const calculatedSubtotal = (cartData.products || []).reduce((acc: number, item: CartProduct) => {
+            const price = Number(item.price) || 0;
+            const quantity = Number(item.quantity || item.qty) || 0;
+            return acc + (price * quantity);
+          }, 0);
+          setSubtotal(calculatedSubtotal);
+          console.log("[CheckoutComponent] Cart data processed. Subtotal:", calculatedSubtotal);
+        } else {
+          console.warn("[CheckoutComponent] Failed to fetch cart data or cart is empty:", cartResult.status === 'rejected' ? cartResult.reason : cartResult.value?.message);
+          setData({ products: [] });
+          setSubtotal(0);
+          if (cartResult.status === 'rejected') toast.error("Failed to load cart details.");
+        }
+
+        // Process User Data - Enhanced handling for "User not found" scenario
+        if (userResult.status === 'fulfilled' && userResult.value) {
+          const userDataFromAction = userResult.value; // This is the object from getUserById
+          console.log("[CheckoutComponent] Raw user data:", userDataFromAction);
+
+          // Create a properly structured user object with fallbacks for all required fields
+          const processedUserData: UserData = {
+            _id: userDataFromAction._id,
+            firstName: userDataFromAction.firstName ||
+              (userDataFromAction.name ? userDataFromAction.name.split(' ')[0] : '') ||
+              (session?.user?.name ? session.user.name.split(' ')[0] : ''),
+            lastName: userDataFromAction.lastName ||
+              (userDataFromAction.name ? userDataFromAction.name.split(' ').slice(1).join(' ') : '') ||
+              (session?.user?.name ? session.user.name.split(' ').slice(1).join(' ') : ''),
+            email: userDataFromAction.email || session?.user?.email || '',
+            phone: userDataFromAction.phone || '',
+            username: userDataFromAction.username || '',
+            image: userDataFromAction.image || session?.user?.image || '',
+          };
+
+          setUser(processedUserData); // Set the processed user state
+          console.log("[CheckoutComponent] Processed user data:", processedUserData);
+        } else {
+          console.log("[CheckoutComponent] User not found in database. Attempting to sync user...");
+
+          // Try to create/sync the user if session exists but user not found in DB
+          if (session?.user) {
+            try {
+              const createUserResponse = await fetch('/api/user/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sessionUser: session.user,
+                  userId: userId
+                }),
+                credentials: 'include'
+              });
+
+              if (createUserResponse.ok) {
+                const syncResult = await createUserResponse.json();
+                if (syncResult.success && syncResult.user) {
+                  const syncedUserData: UserData = {
+                    _id: syncResult.user._id,
+                    firstName: syncResult.user.firstName || session.user.name?.split(' ')[0] || '',
+                    lastName: syncResult.user.lastName || session.user.name?.split(' ').slice(1).join(' ') || '',
+                    email: syncResult.user.email || session.user.email || '',
+                    phone: syncResult.user.phone || '',
+                    username: syncResult.user.username || '',
+                    image: syncResult.user.image || session.user.image || '',
+                  };
+                  setUser(syncedUserData);
+                  console.log("[CheckoutComponent] User synced successfully:", syncedUserData);
+                  toast.success("Profile synced successfully!", { duration: 2000 });
+                } else {
+                  throw new Error('Failed to sync user data');
+                }
+              } else {
+                throw new Error('Sync API call failed');
+              }
+            } catch (syncError) {
+              console.error("[CheckoutComponent] Failed to sync user:", syncError);
+
+              // Create fallback user object from session if sync failed
+              const fallbackUserData: UserData = {
+                _id: session.user.id || '',
+                firstName: session.user.name ? session.user.name.split(' ')[0] : '',
+                lastName: session.user.name ? session.user.name.split(' ').slice(1).join(' ') : '',
+                email: session.user.email || '',
+                image: session.user.image || '',
+                username: session.user.username || '',
+                phone: ''
+              };
+              setUser(fallbackUserData);
+              console.log("[CheckoutComponent] Using fallback user data from session:", fallbackUserData);
+              toast.info("Profile loaded from session. Some features may be limited.", { duration: 3000 });
+            }
+          } else {
+            console.error("[CheckoutComponent] No session data available for fallback");
+            setCheckoutError("Authentication session expired. Please sign in again.");
+            setIsLoading(false);
+            setTimeout(() => router.push('/signin?callbackUrl=/checkout'), 2000);
+            return;
+          }
+        }
+
+        // Process Address Data - Enhanced error handling
+        try {
+          const addressResponse = await fetch('/api/user/address', {
+            credentials: 'include' // Ensure cookies are sent with this request
+          });
+
+          if (addressResponse.ok) {
+            const addressData = await addressResponse.json();
+            if (addressData.addresses && addressData.addresses.length > 0) {
+              setUserAddresses(addressData.addresses);
+
+              // Find default or first address - IMPROVED SELECTION LOGIC
+              const defaultAddress = addressData.addresses.find((addr: Address) => addr.isDefault) || addressData.addresses[0];
+
+              // Always ensure we have a selected address if addresses exist
+              if (defaultAddress) {
+                setAddress(defaultAddress);
+                setSelectedAddressId(defaultAddress._id);
+                console.log("[CheckoutComponent] Address auto-selected:", defaultAddress._id);
+
+                // Auto-proceed only if user has at least one address
+                setStep(2); // Move to coupon step if address is set
+              } else {
+                // This shouldn't happen if addresses exist, but as a fallback
+                setShowAddressForm(true);
+              }
+            } else {
+              console.log("[CheckoutComponent] No addresses found via API, showing form.");
+              setShowAddressForm(true);
+            }
+          } else {
+            const errorStatus = addressResponse.status;
+            const errorText = await addressResponse.text();
+            console.error(`[CheckoutComponent] Address API request failed with status ${errorStatus}:`, errorText);
+            toast.error(`Failed to load addresses.`);
+            setShowAddressForm(true); // Show form as fallback
+          }
+        } catch (error) {
+          console.error("[CheckoutComponent] Error fetching addresses:", error);
+          toast.error("Failed to load addresses");
+          setShowAddressForm(true); // Show form as fallback
+        }
+
+      } catch (error) {
+        console.error("[CheckoutComponent] Unexpected error during fetchData:", error);
+        toast.error("An unexpected error occurred while loading checkout. Please refresh.");
+        setCheckoutError("Failed to load checkout data. Please refresh the page.");
+      } finally {
+        console.log("[CheckoutComponent] Finished fetching data.");
+        setIsLoading(false);
+      }
+    };
+
+    if (status === 'authenticated' && userId) {
+      fetchData();
+    } else if (status === 'authenticated' && !userId) {
+      console.error("[CheckoutComponent] Session authenticated but userId is missing!");
+      toast.error("User session error. Please try logging out and back in.");
+      setCheckoutError("User session error. Please ensure you are properly logged in.");
+      setIsLoading(false);
+      // Redirect to login after a delay
+      setTimeout(() => router.push('/signin?callbackUrl=/checkout'), 3000);
+    } else if (status === 'unauthenticated') {
+      console.log("[CheckoutComponent] User is unauthenticated. Redirecting to login...");
+      setIsLoading(false);
+      router.push('/signin?callbackUrl=/checkout');
+    }
+    // Add cleanup function for abort controllers if needed
+
+    return () => {
+      // Cancel any pending requests here if using AbortController
+    };
+  }, [userId, status, router]);
+
+  // --- Form Population Effect ---
+  useEffect(() => {
+    if (address) {
+      form.setValues({
+        address1: address.address1 || "",
+        address2: address.address2 || "",
+        city: address.city || "",
+        state: address.state || "",
+        zipCode: address.zipCode || "",
+        country: address.country || "India",
+        isDefault: address.isDefault || false,
+        firstName: address.firstName || user?.firstName || "",
+        lastName: address.lastName || user?.lastName || "",
+        phone: address.phoneNumber || user?.phone || "",
+      });
+    } else if (showAddressForm && user) {
+      // Pre-fill names if known from user profile
+      // Using form.setValues instead of individual setFieldValue calls to batch updates
+      form.setValues({
+        ...form.values, // Keep other values unchanged
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || ""
+      });
+    } else if (showAddressForm) {
+      // Using form.setValues instead of individual setFieldValue calls to batch updates
+      form.setValues({
+        ...form.values, // Keep other values unchanged
+        firstName: "",
+        lastName: "",
+        phone: ""
+      });
+    }
+    // Stringify the dependencies that are objects to prevent unnecessary rerenders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, user?.firstName, user?.lastName, user?.phone, showAddressForm]);
+
+  // --- Step Navigation ---
+  const nextStep = () => setStep((s) => s + 1);
+  const prevStep = () => setStep((s) => s - 1);
+  const isStepCompleted = (currentStep: number) => step > currentStep;
+  const isActiveStep = (currentStep: number) => step === currentStep;
+
+  // --- Coupon Handling ---
+  const applyCouponHandler = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setCouponError(""); // Clear previous error
+
+    if (coupon.trim() === "") {
+      setDiscount(0); // Ensure discount is reset if no coupon applied
+      setTotalAfterDiscount(null);
+      nextStep(); // Proceed without applying
+      return;
+    }
+
+    if (!user || !user._id) {
+      toast.error("User information not available. Please refresh.");
+      return;
+    }
+
+    toast.loading("Applying coupon..."); // Added loading toast
+    try {
+      const res = await applyCoupon(coupon, user._id); // Assuming applyCoupon returns { success: boolean, totalAfterDiscount?: number, discount?: number, message?: string }
+      toast.dismiss(); // Dismiss loading toast
+
+      if (res && res.success && res.totalAfterDiscount !== undefined && res.discount !== undefined) {
+        setTotalAfterDiscount(res.totalAfterDiscount);
+        setDiscount(res.discount);
+        toast.success(`Applied ${res.discount}% coupon successfully.`);
+        nextStep();
+      } else {
+        const errorMsg = res?.message || "Invalid or expired coupon code.";
+        toast.error(errorMsg);
+        setCouponError(errorMsg);
+        setDiscount(0); // Reset discount on error
+        setTotalAfterDiscount(null);
+      }
+    } catch (err: any) {
+      toast.dismiss(); // Dismiss loading toast on error too
+      console.error("Coupon application error:", err);
+      const errorMsg = "Failed to apply coupon. Please try again.";
+      setCouponError(errorMsg);
+      toast.error(errorMsg);
+      setDiscount(0); // Reset discount on error
+      setTotalAfterDiscount(null);
+    }
+  };
+
+  // --- GST Validation ---
+  const handleGstinChange = async (gstin: string) => {
+    const upperGst = gstin.toUpperCase();
+    setGstDetails(prev => ({ ...prev, gstin: upperGst }));
+    setGstErrorMessage("");
+
+    if (upperGst.length === 15) {
+      setIsValidatingGst(true);
+      try {
+        const res = await fetch(`/api/gst/validate?gstin=${upperGst}`);
+        const data = await res.json();
+
+        if (data.status_cd === "1" && data.data) {
+          // Official GST API returns Base64 encoded payload
+          try {
+            const decodedData = JSON.parse(atob(data.data));
+            setGstDetails(prev => ({
+              ...prev,
+              businessName: decodedData.businessName,
+              businessAddress: decodedData.businessAddress
+            }));
+            toast.success("GSTIN validated successfully");
+          } catch (decodeError) {
+            console.error("Error decoding GST data:", decodeError);
+            setGstErrorMessage("Error processing GST data");
+          }
+        } else {
+          setGstErrorMessage(data.error?.message || "Invalid GSTIN");
+        }
+      } catch (err) {
+        setGstErrorMessage("Error validating GSTIN");
+      } finally {
+        setIsValidatingGst(false);
+      }
+    }
+  };
+
+  // --- Cart Items & Totals Calculation ---
+  const cartItems: CartProduct[] = data?.products || [];
+
+  // Calculate shipping cost dynamically based on selected address and payment method
+  const calculateShippingForAddress = async (selectedAddress: Address, paymentMode?: 'cod' | 'razorpay') => {
+    if (!selectedAddress || !selectedAddress.zipCode) {
+      setShippingCost(0);
+      setShippingError('Please select a delivery address');
+      return;
+    }
+
+    setIsCalculatingShipping(true);
+    setShippingError(null);
+
+    try {
+      // Calculate total weight (you can enhance this based on your product data)
+      // Calculate total weight based on product dimensions
+      const totalWeight = cartItems.reduce((acc, item: any) => {
+        const quantity = Number(item.quantity || item.qty) || 0;
+        let itemWeightGrams = 500; // Default 500g fallback
+
+        // Check for product details and shipping dimensions
+        const productData = typeof item.product === 'object' ? item.product : null;
+
+        if (productData && productData.shippingDimensions) {
+          try {
+            // Calculate chargeable weight (max of volumetric vs dead weight) in kg
+            const chargeableWeightKg = calculateChargeableWeight(productData.shippingDimensions);
+
+            // Convert to grams
+            if (chargeableWeightKg > 0) {
+              itemWeightGrams = Math.round(chargeableWeightKg * 1000);
+            }
+          } catch (e) {
+            console.warn("Error calculating weight for item:", item.name, e);
+          }
+        } else if (item.weight) {
+          // Fallback to item.weight if available (mostly for legacy data)
+          itemWeightGrams = Math.round(Number(item.weight) * 1000);
+        }
+
+        console.log(`[Checkout] Item: ${item.name}, Weight/Item: ${itemWeightGrams}g, Qty: ${quantity}`);
+        return acc + (quantity * itemWeightGrams);
+      }, 0);
+
+      // Use the payment method to determine shipping calculation
+      const currentPaymentMode = paymentMode || paymentMethod;
+      const shippingPaymentMode = currentPaymentMode === 'cod' ? 'COD' : 'Pre-paid';
+
+      console.log(`[calculateShippingForAddress] Calculating shipping for ${shippingPaymentMode} payment mode`);
+
+      // Use the new Delhivery shipping cost API
+      const result = await calculateDelhiveryShipping(
+        selectedAddress.zipCode,
+        totalWeight,
+        shippingPaymentMode
+      );
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      setShippingCost(result.cost);
+      setShippingError(null);
+      console.log(`[calculateShippingForAddress] Shipping calculated for ${shippingPaymentMode}:`, result.cost);
+    } catch (error) {
+      console.error('[calculateShippingForAddress] Error:', error);
+      setShippingError(error instanceof Error ? error.message : 'Unable to calculate shipping. Please try again.');
+      setShippingCost(0);
+    } finally {
+      setIsCalculatingShipping(false);
+    }
+  };
+
+  // Calculate shipping cost when address or payment method changes
+  useEffect(() => {
+    if (address && address.zipCode) {
+      calculateShippingForAddress(address, paymentMethod);
+    } else {
+      setShippingCost(0);
+      setShippingError('Please select a delivery address');
+    }
+  }, [address, subTotal, cartItems, paymentMethod]); // Added paymentMethod to dependencies
+
+  const totalSaved: number = cartItems.reduce((acc: number, curr: CartProduct) => {
+    const originalPrice = Number(curr.originalPrice) || Number(curr.price) || 0;
+    const currentPrice = Number(curr.price) || 0;
+    const quantity = Number(curr.quantity || curr.qty) || 0;
+    const savedPerItem = Math.max(0, originalPrice - currentPrice);
+    return acc + (savedPerItem * quantity);
+  }, 0);
+
+  const displaySubtotal = subTotal;
+  const displayCartDiscount = totalSaved;
+  const displayShipping = (() => {
+    if (isCalculatingShipping) return "Calculating...";
+    if (shippingError) return <span className="text-red-500 text-xs">{shippingError}</span>;
+    if (shippingCost === 0) return "Select address to calculate";
+    return `₹${shippingCost.toFixed(2)}`;
+  })();
+
+  const subtotalAfterCoupon = subTotal - (discount > 0 ? (subTotal * (discount / 100)) : 0);
+  const gstAmount = (subtotalAfterCoupon * 0.18);
+  const totalBeforeCoupon = subTotal - totalSaved + shippingCost + taxCost + gstAmount;
+  const finalTotal = totalAfterDiscount !== null ? (totalAfterDiscount + gstAmount) : totalBeforeCoupon;
+
+  // --- Button State Logic ---
+  const isAddressStepValid = step === 1 && !!selectedAddressId;
+  const isCouponStepValid = step === 2; // Always allow proceeding from coupon (even without applying)
+  const isPaymentStepValid = step === 3 && !!paymentMethod;
+
+  const canProceed = () => {
+    if (step === 1) return isAddressStepValid;
+    if (step === 2) {
+      if (isGstInvoice) {
+        return !!gstDetails.gstin && !!gstDetails.businessName && !gstErrorMessage;
+      }
+      return isCouponStepValid;
+    }
+    // Add more steps if needed
+    return false; // Default case
+  };
+
+  const placeOrderButtonDisabled =
+    !user ||
+    !user._id ||
+    !paymentMethod ||
+    placeOrderLoading ||
+    !address || // Ensure an address object is selected/set
+    cartItems.length === 0 || // Prevent order with empty cart
+    !!checkoutError || // Disable if there's a persistent error
+    isCalculatingShipping || // Disable while calculating shipping
+    (shippingCost === 0 && !shippingError); // Disable if shipping calculation returned 0 (unless it's an error)
+
+  const placeOrderButtonText = () => {
+    if (placeOrderLoading) return "Processing...";
+    if (checkoutError) return "Fix Errors to Proceed";
+    if (!user || !user._id) return "Loading user...";
+    if (!address) return "Select Delivery Address";
+    if (cartItems.length === 0) return "Cart is Empty";
+    if (isCalculatingShipping) return "Calculating Shipping...";
+    if (shippingCost === 0 && !shippingError) return "Unable to Calculate Shipping";
+    if (shippingError) return "Shipping Calculation Failed";
+    if (!paymentMethod) return "Select Payment Method";
+    if (paymentMethod === "cod") return "Place Order (COD)";
+    if (paymentMethod === "razorpay") return `Pay ₹${finalTotal.toFixed(2)} with Razorpay`;
+    return `Place Order (₹${finalTotal.toFixed(2)})`; // Fallback
+  };
+
+
+  // --- Place Order Handler ---
+  const placeOrderHandler = async () => {
+    console.log("[placeOrderHandler] Initiated.");
+    setCheckoutError(null); // Clear previous errors
+    setPlaceOrderLoading(true);
+    toast.dismiss(); // Clear previous toasts
+    toast.loading("Processing your order..."); // Use loading toast
+
+    // --- Re-validate essential data ---
+    if (!user || !user._id || !address || cartItems.length === 0 || !paymentMethod) {
+      console.error("[placeOrderHandler] Pre-flight validation failed.");
+      toast.dismiss();
+      toast.error("Missing required information. Please review your details.");
+      setCheckoutError("Missing required information (User, Address, Cart, or Payment Method).");
+      setPlaceOrderLoading(false);
+      return;
+    }
+
+    console.log("[placeOrderHandler] Pre-flight validation passed.");
+
+    // --- Prepare Shipping Address ---
+    const orderShippingAddress = {
+      firstName: address.firstName || user?.firstName || "N/A", // Use user.firstName
+      lastName: address.lastName || user?.lastName || "N/A",   // Use user.lastName
+      address1: address.address1 || "",
+      address2: address.address2 || "",
+      city: address.city || "",
+      state: address.state || "",
+      zipCode: address.zipCode || "",
+      country: address.country || "India",
+      phone: address.phoneNumber || "", // Added phone to shippingAddress
+    };
+
+    // --- Validate Address Fields ---
+    const requiredAddressFields: (keyof Omit<typeof orderShippingAddress, 'address2'>)[] = ['firstName', 'lastName', 'address1', 'city', 'state', 'zipCode', 'country', 'phone']; // Added phone
+    const missingFields = requiredAddressFields.filter(field => !orderShippingAddress[field]);
+    if (missingFields.length > 0) {
+      console.error("[placeOrderHandler] Validation failed: Incomplete shipping address.", missingFields);
+      toast.dismiss();
+      toast.error(`Incomplete shipping address. Missing: ${missingFields.join(', ')}`);
+      setCheckoutError(`Incomplete shipping address. Please update your selected address.`);
+      setPlaceOrderLoading(false);
+      return;
+    }
+    console.log("[placeOrderHandler] Shipping address prepared and validated:", orderShippingAddress);
+
+    // --- Prepare GST Info ---
+    const gstInfoPayload = isGstInvoice ? {
+      gstin: gstDetails.gstin,
+      businessName: gstDetails.businessName,
+      businessAddress: gstDetails.businessAddress
+    } : undefined;
+
+    // --- Construct Checkout Payload ---
+    // Calculate values for payload ensuring they match what's displayed
+    const itemTotal = subTotal;
+    const shippingTotal = shippingCost;
+    const subtotalAfterCoupon = subTotal - (discount > 0 ? (subTotal * (discount / 100)) : 0);
+    const taxTotal = subtotalAfterCoupon * 0.18; // 18% GST on discounted subtotal
+    const finalTotal = itemTotal - (discount > 0 ? (itemTotal * (discount / 100)) : 0) + shippingTotal + taxTotal;
+
+    // --- Construct Checkout Payload ---
+    const checkoutDataPayload = { // Renamed to avoid conflict with CheckoutData interface
+      userId: user._id,
+      // Explicitly map only necessary fields, ensuring product is the ID string
+      cartItems: cartItems.map((item: any) => {
+        // Enhanced originalPrice calculation for checkout
+        let originalPrice = 0;
+
+        // First priority: Use item's originalPrice if available
+        if (item.originalPrice && typeof item.originalPrice === 'number' && item.originalPrice > 0) {
+          originalPrice = item.originalPrice;
+        }
+        // Second priority: Calculate from discount if available
+        else if (item.discount && typeof item.discount === 'number' && item.discount > 0) {
+          // Calculate original price from current price and discount
+          originalPrice = item.price / (1 - (item.discount / 100));
+        }
+        // Third priority: Use product data if available
+        else if (item.product && typeof item.product === 'object') {
+          // Try to get original price from product structure
+          if (item.product.originalPrice && typeof item.product.originalPrice === 'number') {
+            originalPrice = item.product.originalPrice;
+          } else if (item.product.price && typeof item.product.price === 'number') {
+            originalPrice = item.product.price;
+          }
+        }
+        // Ultimate fallback to current price if no discount info available
+        else {
+          originalPrice = item.price || 0;
+        }
+
+        return {
+          product: typeof item.product === 'object' ? item.product._id : item.product, // Extract _id if product is an object
+          name: item.name,
+          qty: Number(item.quantity || item.qty || 0), // Ensure quantity is a number
+          quantity: Number(item.quantity || item.qty || 0), // Include both fields for compatibility
+          price: item.price, // Selling price
+          originalPrice: originalPrice, // Enhanced original price calculation
+          size: item.size,
+          image: item.image
+          // Do NOT spread the whole item object (...item)
+        };
+      }),
+      itemsPrice: itemTotal,
+      shippingPrice: shippingTotal,
+      taxPrice: taxTotal,
+      totalPrice: finalTotal,
+      shippingAddress: orderShippingAddress,
+      paymentMethod,
+      couponCode: coupon || null,
+      discountAmount: discount > 0 ? (itemTotal * (discount / 100)) : 0,
+      gstInfo: isGstInvoice ? gstDetails : undefined
+    };
+
+    console.log("[placeOrderHandler] Calling /api/order with payload:", checkoutDataPayload);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+      // --- Call Backend API ---
+      const apiRes = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(checkoutDataPayload),
+        credentials: 'include', // Add credentials to include cookies
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId); // Clear timeout if successful
+      console.log('[placeOrderHandler] API raw response status:', apiRes.status, apiRes.statusText);
+
+      // Try to parse JSON regardless of apiRes.ok to get potential error messages from body
+      let response;
+      try {
+        response = await apiRes.json();
+        console.log("[placeOrderHandler] API response received:", response);
+      } catch (jsonError: any) {
+        console.error("[placeOrderHandler] Failed to parse API response JSON:", jsonError);
+        toast.dismiss();
+        // If JSON parsing fails, and status is not ok, construct a generic error.
+        if (!apiRes.ok) {
+          const errorText = await apiRes.text(); // Get raw text if JSON fails
+          setCheckoutError(`Server error: ${apiRes.status} ${apiRes.statusText}. Response: ${errorText.substring(0, 100)}`);
+          toast.error("Checkout Failed", { description: `Server error: ${apiRes.status}. Please try again.` });
+        } else {
+          // apiRes.ok but JSON parsing failed - unusual case
+          setCheckoutError("Invalid response from server. Please try again.");
+          toast.error("Checkout Failed", { description: "Received an invalid response from the server." });
+        }
+        setPlaceOrderLoading(false);
+        return;
+      }
+
+      toast.dismiss(); // Dismiss loading toast
+
+      if (apiRes.ok && response && response.success) {
+        console.log("[placeOrderHandler] API call successful.");
+        const orderId = response.orderId;
+
+        // --- Handle Different Payment Methods ---
+        if (paymentMethod === 'cod') {
+          if (response.requiresCodVerification) {
+            console.log("[placeOrderHandler] COD order requires verification. Order ID:", orderId);
+            toast.info("Order submitted! Please check your email for a verification code.", { duration: 6000 });
+            // router.push(`/order/${orderId}?status=cod_pending_verification`); // Option 1: Go to order details page
+            router.push(`/verify-cod?orderId=${orderId}`); // Option 2: Go to a dedicated verification page
+            // Ensure this page /verify-cod is created
+            // DO NOT empty cart here. It will be emptied after successful verification.
+          } else {
+            // This case should ideally not happen if backend always sets requiresCodVerification for COD
+            console.warn("[placeOrderHandler] COD successful but requiresCodVerification flag not set. Order ID:", orderId);
+            toast.success("Order placed successfully (COD)!");
+            emptyCart(); // Fallback, though cart should be emptied post-verification
+            router.push(`/order/${orderId}?status=cod_success`);
+          }
+        } else if (paymentMethod === 'razorpay') {
+          // Ensure all expected Razorpay details are present from the backend
+          if (response.razorpayOrderId && response.amount && response.razorpayKey && response.currency) {
+            console.log("[placeOrderHandler] Razorpay details received. Initiating payment...");
+
+            // Dynamically load Razorpay script if not already loaded
+            const loadRazorpayScript = () => {
+              return new Promise((resolve) => {
+                if ((window as any).Razorpay) {
+                  resolve(true);
+                  return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                script.onload = () => {
+                  resolve(true);
+                };
+                script.onerror = () => {
+                  resolve(false);
+                };
+                document.body.appendChild(script);
+              });
+            };
+
+            const scriptLoaded = await loadRazorpayScript();
+            if (!scriptLoaded) {
+              console.error("Failed to load Razorpay SDK.");
+              toast.error("Payment gateway script failed to load. Please try again.");
+              setPlaceOrderLoading(false);
+              return;
+            }
+
+            toast.info("Redirecting to Razorpay...");
+
+            const options = {
+              key: response.razorpayKey,
+              amount: response.amount, // Amount is in currency subunits. Default currency is INR.
+              currency: response.currency, // Should be INR
+              name: "Vibecart", // Your business name
+              description: `Order Payment for #${orderId}`,
+              image: "/logo.png", // Your logo URL
+              order_id: response.razorpayOrderId, //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
+              handler: async function (rpResponse: any) {
+                console.log("Razorpay Success Response:", rpResponse);
+                setPlaceOrderLoading(true); // Keep loading during verification
+                toast.loading("Verifying payment...");
+
+                try {
+                  // Call backend to verify payment and update order
+                  const verificationRes = await fetch('/api/order/verify-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      orderId: orderId,
+                      razorpayPaymentId: rpResponse.razorpay_payment_id,
+                      razorpayOrderId: rpResponse.razorpay_order_id,
+                      razorpaySignature: rpResponse.razorpay_signature,
+                      paymentMethod: 'razorpay'
+                    }),
+                    credentials: 'include', // Add credentials to include cookies
+                  });
+
+                  const verificationData = await verificationRes.json();
+                  toast.dismiss();
+
+                  if (verificationRes.ok && verificationData.success) {
+                    toast.success("Payment Successful & Verified!");
+                    emptyCart();
+                    router.push(`/order/${orderId}?status=razorpay_success&payment_id=${rpResponse.razorpay_payment_id}`);
+                  } else {
+                    console.error("Razorpay payment verification failed:", verificationData.message);
+                    toast.error(`Payment Verification Failed: ${verificationData.message || 'Please contact support.'}`);
+                    setCheckoutError(`Payment Verification Failed: ${verificationData.message || 'Contact support with Order ID: ' + orderId}`);
+                    setPlaceOrderLoading(false);
+                  }
+                } catch (verifyError: any) {
+                  toast.dismiss();
+                  console.error("Error during payment verification:", verifyError);
+                  toast.error("Payment verification request failed. Please contact support.");
+                  setCheckoutError("Payment verification request failed. Contact support with Order ID: " + orderId);
+                  setPlaceOrderLoading(false);
+                }
+              },
+              prefill: { //We recommend using the prefill parameter to auto-fill customer's contact information, especially their phone number
+                name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(), // Use user.firstName and user.lastName
+                email: user?.email || "",
+              },
+              notes: {
+                address: `${orderShippingAddress.address1}, ${orderShippingAddress.city}`,
+                internal_order_id: orderId
+              },
+              theme: {
+                color: "#3399cc" // Customize your theme color
+              },
+              modal: {
+                ondismiss: function () {
+                  console.log('Razorpay modal closed.');
+                  if (!placeOrderLoading) { // Only show if not already processing verification
+                    toast.info("Payment cancelled or modal closed.");
+                  }
+                  setPlaceOrderLoading(false); // Re-enable button if modal is closed without payment
+                }
+              }
+            };
+
+            try {
+              const rzp = new (window as any).Razorpay(options);
+              rzp.on('payment.failed', function (rpFailedResponse: any) {
+                console.error("Razorpay Payment Failed Response:", rpFailedResponse);
+                toast.dismiss();
+                const errorCode = rpFailedResponse.error.code;
+                const errorDescription = rpFailedResponse.error.description;
+                const errorSource = rpFailedResponse.error.source;
+                const errorStep = rpFailedResponse.error.step;
+                const errorReason = rpFailedResponse.error.reason;
+                const errorMetadata = rpFailedResponse.error.metadata;
+
+                console.error(`Razorpay Payment Failed: Code: ${errorCode}, Description: ${errorDescription}, Source: ${errorSource}, Step: ${errorStep}, Reason: ${errorReason}`);
+                if (errorMetadata) {
+                  console.error("Error Metadata:", errorMetadata);
+                }
+
+                toast.error(`Payment Failed: ${errorDescription || 'Please try again or contact support.'}`, { duration: 7000 });
+                setCheckoutError(`Payment Failed: ${errorDescription} (Order ID: ${errorMetadata?.order_id}, Payment ID: ${errorMetadata?.payment_id})`);
+                setPlaceOrderLoading(false);
+              });
+              rzp.open();
+            } catch (sdkError: any) {
+              console.error("Error initializing Razorpay SDK:", sdkError);
+              toast.error("Could not initialize payment gateway. Please refresh and try again.");
+              setPlaceOrderLoading(false);
+            }
+
+          } else {
+            console.error("[placeOrderHandler] Razorpay selected, but missing required details in API response. Response:", response);
+            toast.error("Payment processing error. Missing Razorpay details from server.");
+            setCheckoutError("Could not initiate Razorpay payment due to missing server details.");
+            setPlaceOrderLoading(false);
+          }
+        } else {
+          console.warn("[placeOrderHandler] Unknown payment method success:", paymentMethod);
+          toast.success("Order processed (unknown method).");
+          emptyCart();
+          router.push(`/order/${orderId}?status=unknown_success`);
+        }
+
+      } else {
+        // --- Handle API Failure Response ---
+        console.error("[placeOrderHandler] API call failed or success=false. Response:", response);
+        // Use message from parsed JSON response if available
+        const errorMessage = response?.message || (apiRes.ok ? "Checkout failed due to an unknown reason." : `Server error: ${apiRes.status} ${apiRes.statusText}`);
+
+        if (errorMessage.includes("could not be found or are unavailable")) {
+          setCheckoutError(errorMessage + " Please review your cart and remove unavailable items.");
+          toast.error("Checkout Error: Product Unavailable", {
+            description: "Please review the error message below the order summary.",
+          });
+        } else if (errorMessage.includes("Insufficient stock")) {
+          setCheckoutError(errorMessage + " Please reduce the quantity or remove the item from your cart.");
+          toast.error("Checkout Error: Insufficient Stock", {
+            description: "Please review the error message below the order summary.",
+          });
+        } else {
+          setCheckoutError(errorMessage); // Set persistent error for other failures
+          toast.error("Checkout Failed", { description: errorMessage });
+        }
+        setPlaceOrderLoading(false); // Reset loading state on failure
+      }
+    } catch (error: any) {
+      console.error("[placeOrderHandler] Error caught:", error);
+      toast.dismiss(); // Dismiss loading toast
+      const errorMsg = error?.message || "An unexpected error occurred. Please try again.";
+      setCheckoutError(errorMsg); // Show error persistently
+      toast.error("Checkout Error", { description: errorMsg });
+      setPlaceOrderLoading(false); // Reset loading state on exception
+    }
+    // Note: Loading state is managed within each success/error path now.
+    console.log("[placeOrderHandler] Execution finished (or redirected/modal opened).");
+  };
+
+
+  // --- Address Management Handlers ---
+
+  const handleAddressSelect = (addressId: string) => {
+    const selected = userAddresses.find(addr => addr._id === addressId);
+    if (selected) {
+      setAddress(selected);
+      setSelectedAddressId(addressId);
+      setCheckoutError(null); // Clear address-related errors when selecting
+      // Calculate shipping for the selected address
+      calculateShippingForAddress(selected);
+      // Form values are updated by the useEffect dependency on `address`
+    }
+  };
+
+  const handleSetDefaultAddress = async (addressId: string) => {
+    // Optimistic UI update (optional but good UX)
+    const originalAddresses = [...userAddresses];
+    setUserAddresses(prev => prev.map(addr => ({
+      ...addr,
+      isDefault: addr._id === addressId
+    })));
+    const newDefault = userAddresses.find(addr => addr._id === addressId);
+    if (newDefault) setAddress(newDefault); // Update main address state too
+
+    toast.loading("Updating default address...");
+    try {
+      const response = await fetch('/api/user/address', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addressId, action: 'set-default' }),
+        credentials: 'include', // Ensure cookies are sent with the request
+      });
+      const data = await response.json();
+      toast.dismiss(); // Dismiss loading toast
+
+      if (!response.ok) throw new Error(data.message || 'Failed to update default address');
+
+      // Update state with confirmed data from backend
+      setUserAddresses(data.addresses || []);
+      const confirmedDefault = data.addresses.find((addr: Address) => addr.isDefault);
+      if (confirmedDefault) {
+        setAddress(confirmedDefault); // Ensure main address state reflects confirmed default
+        setSelectedAddressId(confirmedDefault._id);
+      }
+      toast.success('Default address updated!');
+
+    } catch (error: any) {
+      toast.dismiss(); // Dismiss loading toast on error too
+      toast.error(error.message || 'Failed to update default address');
+      // Rollback optimistic update on error
+      setUserAddresses(originalAddresses);
+      const originalDefault = originalAddresses.find(addr => addr.isDefault) || originalAddresses[0];
+      if (originalDefault) {
+        setAddress(originalDefault);
+        setSelectedAddressId(originalDefault._id);
+      }
+    }
+  };
+
+  const handleShowNewAddressForm = () => {
+    setShowAddressForm(true);
+    setSelectedAddressId(""); // Deselect any existing address
+    setAddress(null); // Clear the current address object
+    form.reset(); // Clear form for new address
+    // Pre-fill known details like phone/name in the useEffect hook
+  };
+
+  const handleCancelNewAddress = () => {
+    if (userAddresses.length > 0) {
+      setShowAddressForm(false);
+      // Reselect the first or default address
+      const defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
+      if (defaultAddress) {
+        handleAddressSelect(defaultAddress._id);
+      }
+      form.clearErrors(); // Clear any validation errors
+    }
+    // If no addresses exist, cancel does nothing, user must add one.
+  };
+
+  const handleAddAddress = async (values: typeof form.values) => {
+    setAddAddressLoading(true);
+    setCheckoutError(null);
+
+    if (!user || !user._id) {
+      toast.error("User information not available.");
+      setAddAddressLoading(false);
+      return;
+    }
+
+    // Ensure we have name values for Google auth users
+    const firstName = values.firstName || user?.firstName || session?.user?.firstName || session?.user?.name?.split(' ')[0] || '';
+    const lastName = values.lastName || user?.lastName || session?.user?.lastName || session?.user?.name?.split(' ').slice(1).join(' ') || '';
+    const phoneNumber = values.phone || user?.phone || '';
+
+    // Log values for debugging
+    console.log("[AddAddress] Submitting address with name:", firstName, lastName, "phone:", phoneNumber);
+
+    const addressDataToSend = {
+      address1: values.address1,
+      address2: values.address2,
+      city: values.city,
+      state: values.state,
+      zipCode: values.zipCode,
+      country: values.country,
+      isDefault: true, // Automatically set new address as default
+      firstName: firstName,
+      lastName: lastName,
+      phoneNumber: phoneNumber,
+    };
+
+    toast.loading("Saving address...");
+    try {
+      const response = await fetch('/api/user/address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addressDataToSend }),
+        credentials: 'include', // Ensure cookies are sent with the request
+      });
+      const data = await response.json();
+      toast.dismiss();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to add address');
+      }
+
+      const newlySavedAddress = data.address as Address;
+
+      if (!newlySavedAddress || !newlySavedAddress._id) {
+        console.error("handleAddAddress: API reported success but new address object is missing or invalid.", data);
+        throw new Error("Failed to process new address from server.");
+      }
+
+      // Update addresses list and select the new address
+      const updatedAddresses = userAddresses
+        .filter(addr => addr._id !== newlySavedAddress._id) // Remove if existing
+        .map(addr => ({ ...addr, isDefault: false })); // Mark all others as non-default
+      
+      // Ensure isDefault is always a boolean (new address is always default)
+      updatedAddresses.push({ ...newlySavedAddress, isDefault: newlySavedAddress.isDefault ?? true });
+      setUserAddresses(updatedAddresses);
+
+      // Automatically select the new address immediately (use the address object directly)
+      setAddress(newlySavedAddress);
+      setSelectedAddressId(newlySavedAddress._id);
+      setCheckoutError(null);
+      // Calculate shipping for the newly selected address
+      calculateShippingForAddress(newlySavedAddress);
+
+      toast.success(data.message || 'Address saved successfully');
+      form.reset();
+      setShowAddressForm(false);
+
+      // Automatically proceed to next step since new address is always default
+      if (step === 1) {
+        setStep(2);
+      }
+
+    } catch (error: any) {
+      toast.dismiss();
+      console.error("Error saving address:", error);
+      toast.error(error.message || "Failed to save address");
+      setCheckoutError(error.message || "Failed to save address");
+    } finally {
+      setAddAddressLoading(false);
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    // Optimistic UI update (optional but good UX)
+    const originalAddresses = [...userAddresses];
+    setUserAddresses(prev => prev.filter(addr => addr._id !== addressId));
+    if (address && address._id === addressId) {
+      setAddress(null);
+      setSelectedAddressId("");
+    }
+
+    toast.loading("Deleting address...");
+    try {
+      const response = await fetch('/api/user/address', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addressId }),
+        credentials: 'include', // Ensure cookies are sent with the request
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || `Failed to delete address (${response.status})`);
+      }
+
+      const data = await response.json();
+      toast.dismiss();
+      toast.success('Address deleted successfully');
+
+      // Automatically select a new address if available
+      if (userAddresses.length > 1) {
+        const newDefault = userAddresses.find(addr => addr._id !== addressId);
+        if (newDefault) {
+          handleAddressSelect(newDefault._id);
+        }
+      } else {
+        // If no addresses left, show the form
+        setShowAddressForm(true);
+      }
+
+    } catch (error: any) {
+      toast.dismiss();
+      console.error("Error deleting address:", error);
+      toast.error(error.message || "Failed to delete address");
+      // Rollback optimistic update on error
+      setUserAddresses(originalAddresses);
+      const originalDefault = originalAddresses.find(addr => addr.isDefault) || originalAddresses[0];
+      if (originalDefault) {
+        setAddress(originalDefault);
+        setSelectedAddressId(originalDefault._id);
+      }
+    }
+  };
+
+  const handleEditAddress = async (addressId: string, updatedData: Partial<Address>) => {
+    // Optimistic UI update: Merge updates locally
+    setUserAddresses(prev => prev.map(addr => addr._id === addressId ? { ...addr, ...updatedData } : addr));
+
+    toast.loading("Updating address...");
+    try {
+      const response = await fetch('/api/user/address', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addressId, updatedData, action: 'update' }),
+        credentials: 'include', // Add credentials to include cookies
+      });
+      const data = await response.json();
+      toast.dismiss();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update address');
+      }
+
+      // Find and set the updated address
+      const updatedAddress = data.address as Address;
+      setAddress(updatedAddress);
+      setSelectedAddressId(updatedAddress._id);
+
+      toast.success('Address updated successfully');
+
+    } catch (error: any) {
+      toast.dismiss();
+      console.error("Error updating address:", error);
+      toast.error(error.message || "Failed to update address");
+      // Rollback optimistic update on error
+      setUserAddresses(prev => prev.map(addr => addr._id === addressId ? { ...addr, ...updatedData } : addr));
+    }
+  };
+
+  // --- Payment Method Change Handler ---
+  const handlePaymentMethodChange = (value: CheckoutData['paymentMethod']) => {
+    setPaymentMethod(value);
+    // Recalculate shipping with new payment method
+    if (address && address.zipCode) {
+      toast.loading("Updating shipping charges...", { id: "shipping-update" });
+      calculateShippingForAddress(address, value);
+      setTimeout(() => toast.dismiss("shipping-update"), 1000);
+    }
+  };
+
+  // --- Render Logic ---
+
+  // Loading State
+  if (status === "loading" || isLoading) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader className="animate-spin mx-auto mb-4 h-10 w-10 text-primary" />
+          <p className="text-lg text-muted-foreground">Loading Checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Unauthenticated State (Should be handled by useEffect redirect, but as fallback)
+  if (status !== "authenticated" || !session?.user) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
+          <p className="text-lg">Authentication Required</p>
+          <p className="text-muted-foreground mb-4">Please sign in to proceed to checkout.</p>
+          <Button onClick={() => router.push('/signin?callbackUrl=/checkout')} className="hover:bg-gray-800">Sign In</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty Cart State
+  const isCartEmpty = !cartItems || cartItems.length === 0;
+  if (isCartEmpty && !isLoading) { // Check isLoading to prevent flash of empty cart message
+    return (
+      <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <img src="/placeholder/empty-cart.svg" alt="Empty Cart" className="w-40 h-40 mx-auto mb-4 opacity-70" />
+          <p className="text-xl font-semibold mb-2">Your Cart is Empty</p>
+          <p className="text-muted-foreground mb-6">Looks like you haven't added anything to your cart yet.</p>
+          <Button onClick={() => router.push('/')} size="lg" className="hover:bg-gray-800">Continue Shopping</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Main Checkout JSX ---
+  return (
+    <div className="container mx-auto p-4 md:p-8">
+      {/* Checkout Header */}
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold tracking-tight">Checkout</h1>
+        <p className="text-muted-foreground mt-1">Complete your purchase by providing the details below.</p>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8 xl:gap-12">
+
+        {/* Left Side: Steps */}
+        <div className="w-full lg:w-2/3">
+          {/* Step Indicator (Optional but helpful) */}
+          {/* ... Add a visual step indicator if desired ... */}
+
+          {/* Step 1: Delivery Address */}
+          <div className={`p-6 border rounded-lg mb-6 transition-all duration-300 ${isActiveStep(1) ? 'bg-white shadow-md' : 'bg-gray-50 opacity-80'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className={`text-xl font-semibold flex items-center gap-2 ${isStepCompleted(1) ? 'text-green-600' : 'text-gray-800'}`}>
+                {isStepCompleted(1) ? <Check className="h-6 w-6" /> : <span className="font-bold text-primary">1.</span>}
+                Delivery Address
+              </h2>
+              {isStepCompleted(1) && !isActiveStep(1) && (
+                <Button variant="outline" size="sm" onClick={() => setStep(1)} className="hover:bg-gray-100 hover:text-gray-900">Change</Button>
+              )}
+            </div>
+
+            {isActiveStep(1) && (
+              <div className="mt-4 space-y-4">
+                {/* Address Selection */}
+                {userAddresses.length > 0 && !showAddressForm && (
+                  <RadioGroup
+                    value={selectedAddressId}
+                    onValueChange={handleAddressSelect}
+                    className="space-y-3"
+                  >
+                    {userAddresses.map((addr) => (
+                      <Label
+                        key={addr._id}
+                        htmlFor={`addr-${addr._id}`}
+                        className={`flex items-start p-4 border rounded-md cursor-pointer transition-all duration-200 hover:border-gray-400 hover:shadow-sm ${selectedAddressId === addr._id
+                          ? 'border-gray-500 bg-gray-50 ring-1 ring-gray-500 shadow-sm'
+                          : 'border-gray-200'
+                          }`}
+                      >
+                        <RadioGroupItem value={addr._id} id={`addr-${addr._id}`} className="mt-1" />
+                        <div className="ml-3 flex-1">
+                          <div className="flex justify-between items-start">
+                            <span className="font-medium text-gray-800">
+                              {addr.firstName} {addr.lastName}
+                              {addr.isDefault && (
+                                <span className="ml-2 text-xs bg-gray-900 text-white px-1.5 py-0.5 rounded">
+                                  Default
+                                </span>
+                              )}
+                            </span>
+                            <div className="flex space-x-2">
+                              {!addr.isDefault && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-xs h-auto p-1 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSetDefaultAddress(addr._id);
+                                  }}
+                                >
+                                  Set Default
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-auto p-1 text-red-500 hover:bg-red-50 hover:text-red-600"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDeleteAddress(addr._id);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="mt-1 text-sm text-gray-600">
+                            <p>
+                              {addr.address1}
+                              {addr.address2 ? <span>, {addr.address2}</span> : ""}
+                            </p>
+                            <p>{addr.city}, {addr.state} - {addr.zipCode}</p>
+                            {addr.phoneNumber && <p className="mt-1">Phone: {addr.phoneNumber}</p>}
+                          </div>
+                        </div>
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                )}
+
+                {/* Address Form */}
+                {(userAddresses.length === 0 || showAddressForm) && (
+                  <form onSubmit={form.onSubmit(handleAddAddress)} className="space-y-5 border border-dashed p-6 rounded-md bg-gray-50/80 shadow-sm">
+                    <h3 className="font-medium text-center text-gray-800 mb-2">{userAddresses.length === 0 ? "Add your delivery address" : "Add a new address"}</h3>
+
+                    {/* Form Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
+                        <Input
+                          id="firstName"
+                          placeholder="Enter your first name"
+                          value={form.values.firstName}
+                          onChange={(event) => form.setFieldValue('firstName', event.currentTarget.value)}
+                          onBlur={() => form.validateField('firstName')}
+                          required
+                          className="focus:border-primary"
+                        />
+                        {form.errors.firstName && <p className="text-red-500 text-xs mt-1">{form.errors.firstName}</p>}
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          placeholder="Enter your last name"
+                          value={form.values.lastName}
+                          onChange={(event) => form.setFieldValue('lastName', event.currentTarget.value)}
+                          onBlur={() => form.validateField('lastName')}
+                          required
+                          className="focus:border-primary"
+                        />
+                        {form.errors.lastName && <p className="text-red-500 text-xs mt-1">{form.errors.lastName}</p>}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="address1" className="text-sm font-medium">Address Line 1</Label>
+                      <Input
+                        id="address1"
+                        placeholder="House No, Building, Street, Area"
+                        value={form.values.address1}
+                        onChange={(event) => form.setFieldValue('address1', event.currentTarget.value)}
+                        onBlur={() => form.validateField('address1')}
+                        required
+                        className="focus:border-primary"
+                      />
+                      {form.errors.address1 && <p className="text-red-500 text-xs mt-1">{form.errors.address1}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="address2" className="text-sm font-medium">Address Line 2 (Optional)</Label>
+                      <Input
+                        id="address2"
+                        placeholder="Apartment, Suite, Floor, etc."
+                        value={form.values.address2}
+                        onChange={(event) => form.setFieldValue('address2', event.currentTarget.value)}
+                        className="focus:border-primary"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          placeholder="Your contact number"
+                          type="tel"
+                          value={form.values.phone}
+                          onChange={(event) => form.setFieldValue('phone', event.currentTarget.value)}
+                          onBlur={() => form.validateField('phone')}
+                          required
+                          className="focus:border-primary"
+                        />
+                        {form.errors.phone && <p className="text-red-500 text-xs mt-1">{form.errors.phone}</p>}
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="zipCode" className="text-sm font-medium">Zip Code</Label>
+                        <Input
+                          id="zipCode"
+                          placeholder="6-digit Zip/Postal Code"
+                          value={form.values.zipCode}
+                          onChange={(event) => form.setFieldValue('zipCode', event.currentTarget.value)}
+                          onBlur={() => form.validateField('zipCode')}
+                          required
+                          className="focus:border-primary"
+                        />
+                        {form.errors.zipCode && <p className="text-red-500 text-xs mt-1">{form.errors.zipCode}</p>}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="city" className="text-sm font-medium">City</Label>
+                        <Input
+                          id="city"
+                          placeholder="Your city"
+                          value={form.values.city}
+                          onChange={(event) => form.setFieldValue('city', event.currentTarget.value)}
+                          onBlur={() => form.validateField('city')}
+                          required
+                          className="focus:border-primary"
+                        />
+                        {form.errors.city && <p className="text-red-500 text-xs mt-1">{form.errors.city}</p>}
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="state" className="text-sm font-medium">State</Label>
+                        <Input
+                          id="state"
+                          placeholder="Your state"
+                          value={form.values.state}
+                          onChange={(event) => form.setFieldValue('state', event.currentTarget.value)}
+                          onBlur={() => form.validateField('state')}
+                          required
+                          className="focus:border-primary"
+                        />
+                        {form.errors.state && <p className="text-red-500 text-xs mt-1">{form.errors.state}</p>}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="country" className="text-sm font-medium">Country</Label>
+                      <Input
+                        id="country"
+                        placeholder="Country"
+                        value={form.values.country}
+                        onChange={(event) => form.setFieldValue('country', event.currentTarget.value)}
+                        disabled
+                        className="bg-gray-100"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2 pt-2">
+                      <Checkbox
+                        id="isDefault"
+                        checked={form.values.isDefault}
+                        onCheckedChange={(checked) => {
+                          // Handle CheckedState type: treat indeterminate as false
+                          const newValue = checked === true;
+                          form.setFieldValue('isDefault', newValue);
+                        }}
+                      />
+                      <Label htmlFor="isDefault" className="text-sm font-normal cursor-pointer">Set as default delivery address</Label>
+                    </div>
+
+                    {/* Form Actions */}
+                    <div className="flex justify-end gap-3 pt-3">
+                      {userAddresses.length > 0 && showAddressForm && (
+                        <Button type="button" variant="outline" onClick={handleCancelNewAddress} disabled={addAddressLoading} className="hover:bg-gray-100 hover:text-gray-900">Cancel</Button>
+                      )}
+                      <Button
+                        type="submit"
+                        disabled={addAddressLoading || !form.isValid()}
+                        className="bg-gray-900 hover:bg-gray-800 transition-colors text-white"
+                      >
+                        {addAddressLoading ? <Loader className="animate-spin mr-2 h-4 w-4" /> : null}
+                        Save Address
+                      </Button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Add New Address Button */}
+                {userAddresses.length > 0 && !showAddressForm && (
+                  <div className="mt-4">
+                    <Button variant="outline" onClick={handleShowNewAddressForm} className="hover:bg-gray-100 hover:text-gray-900">
+                      <Plus className="mr-2 h-4 w-4" /> Add New Address
+                    </Button>
+                  </div>
+                )}
+
+                {/* Proceed Button */}
+                {address && !showAddressForm && ( // Only show proceed if an address is selected and form is not open
+                  <div className="mt-6 text-right">
+                    <Button onClick={nextStep} size="lg" disabled={!selectedAddressId} className="hover:bg-gray-800">
+                      Use This Address & Proceed
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div> {/* End Step 1 */}
+
+          {/* Step 2: Apply Coupon */}
+          <div className={`p-6 border rounded-lg mb-6 transition-all duration-300 ${isActiveStep(2) ? 'bg-white shadow-md' : 'bg-gray-50 opacity-80'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className={`text-xl font-semibold flex items-center gap-2 ${isStepCompleted(2) ? 'text-green-600' : 'text-gray-800'}`}>
+                {isStepCompleted(2) ? <Check className="h-6 w-6" /> : <span className="font-bold text-primary">2.</span>}
+                Apply Coupon
+              </h2>
+              {isStepCompleted(2) && !isActiveStep(2) && (
+                <Button variant="outline" size="sm" onClick={() => setStep(2)} className="hover:bg-gray-100 hover:text-gray-900">Change</Button>
+              )}
+            </div>
+            {isActiveStep(2) && (
+              <form onSubmit={applyCouponHandler} className="mt-4 space-y-4">
+                <div className="flex gap-2 items-start">
+                  <div className="flex-grow">
+                    <Input
+                      placeholder="Enter coupon code (optional)"
+                      value={coupon}
+                      onChange={(e) => { setCoupon(e.target.value); setCouponError(""); }}
+                      className={couponError ? "border-red-500" : ""}
+                    />
+                    {couponError && <p className="text-red-500 text-xs mt-1">{couponError}</p>}
+                  </div>
+                  <Button type="submit" variant="secondary" className="shrink-0 hover:bg-gray-100 hover:text-gray-900">Apply</Button>
+                </div>
+                {discount > 0 && (
+                  <p className="text-green-600 text-sm font-medium">✓ Coupon "{coupon}" applied ({discount}% discount)!</p>
+                )}
+                <div className="flex justify-between mt-6">
+                  <Button variant="outline" onClick={prevStep} className="hover:bg-gray-100 hover:text-gray-900">Back to Address</Button>
+                  <Button onClick={nextStep} size="lg" className="hover:bg-gray-800">Proceed to Payment</Button>
+                </div>
+              </form>
+            )}
+
+            {isActiveStep(2) && (
+              <div className="mt-8 pt-8 border-t border-dashed">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox
+                    id="gst-invoice"
+                    checked={isGstInvoice}
+                    onCheckedChange={(checked) => setIsGstInvoice(checked === true)}
+                  />
+                  <Label htmlFor="gst-invoice" className="font-semibold cursor-pointer">
+                    I want a GST Invoice (for Business Orders)
+                  </Label>
+                </div>
+
+                {isGstInvoice && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md animate-in fade-in duration-300">
+                    <div className="space-y-1">
+                      <Label htmlFor="gstin">GSTIN</Label>
+                      <div className="relative">
+                        <Input
+                          id="gstin"
+                          placeholder="22AAAAA0000A1Z5"
+                          value={gstDetails.gstin}
+                          onChange={(e) => handleGstinChange(e.target.value)}
+                          maxLength={15}
+                        />
+                        {isValidatingGst && <Loader className="absolute right-2 top-2 h-5 w-5 animate-spin text-primary" />}
+                      </div>
+                      {gstErrorMessage && <p className="text-red-500 text-xs">{gstErrorMessage}</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="businessName">Business Name</Label>
+                      <Input
+                        id="businessName"
+                        placeholder="Company Name"
+                        value={gstDetails.businessName}
+                        onChange={(e) => setGstDetails(prev => ({ ...prev, businessName: e.target.value }))}
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-1">
+                      <Label htmlFor="businessAddress">Business Address</Label>
+                      <Input
+                        id="businessAddress"
+                        placeholder="Registered Business Address"
+                        value={gstDetails.businessAddress}
+                        onChange={(e) => setGstDetails(prev => ({ ...prev, businessAddress: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div> {/* End Step 2 */}
+
+          {/* Step 3: Payment Method */}
+          <div className={`p-6 border rounded-lg transition-all duration-300 ${isActiveStep(3) ? 'bg-white shadow-md' : 'bg-gray-50 opacity-80'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className={`text-xl font-semibold flex items-center gap-2 ${isStepCompleted(3) ? 'text-green-600' : 'text-gray-800'}`}>
+                {isStepCompleted(3) ? <Check className="h-6 w-6" /> : <span className="font-bold text-primary">3.</span>}
+                Payment Method
+              </h2>
+              {/* No change button needed here as final button is in summary */}
+            </div>
+            {isActiveStep(3) && (
+              <div className="mt-4 space-y-4">
+                <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange} className="space-y-3">
+                  {/* COD Option */}
+                  <Label htmlFor="cod" className={`flex items-center p-4 border rounded-md cursor-pointer transition-colors hover:border-gray-400 ${paymentMethod === 'cod' ? 'border-gray-500 bg-gray-50 ring-1 ring-gray-500' : 'border-gray-200'}`}>
+                    <RadioGroupItem value="cod" id="cod" />
+                    <div className="ml-3">
+                      <span className="font-medium">Cash on Delivery (COD)</span>
+                      <p className="text-xs text-muted-foreground">Pay with cash upon delivery. Additional COD charges may apply.</p>
+                      {paymentMethod === 'cod' && (
+                        <p className="text-xs text-gray-700 mt-1">
+                          You will receive a verification code via email to confirm your order.
+                        </p>
+                      )}
+                    </div>
+                  </Label>
+                  {/* Razorpay Option */}
+                  <Label htmlFor="razorpay" className={`flex items-center p-4 border rounded-md cursor-pointer transition-colors hover:border-gray-400 ${paymentMethod === 'razorpay' ? 'border-gray-500 bg-gray-50 ring-1 ring-gray-500' : 'border-gray-200'}`}>
+                    <RadioGroupItem value="razorpay" id="razorpay" />
+                    <div className="ml-3">
+                      <span className="font-medium">Razorpay (Prepaid)</span>
+                      <p className="text-xs text-muted-foreground">Pay online using Razorpay gateway. Lower shipping charges.</p>
+                    </div>
+                  </Label>
+                </RadioGroup>
+                <div className="flex justify-between mt-6">
+                  <Button variant="outline" onClick={prevStep} className="hover:bg-gray-100 hover:text-gray-900">Back to Coupon</Button>
+                  {/* Final Place Order button is in the summary section */}
+                </div>
+              </div>
+            )}
+          </div> {/* End Step 3 */}
+
+        </div> {/* End Left Side */}
+
+        {/* Right Side: Order Summary */}
+        <div className="w-full lg:w-1/3 lg:sticky top-24 self-start rounded-lg border bg-gray-50 shadow-sm">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-5 border-b pb-3">Order Summary</h2>
+
+            {/* Order Summary Items */}
+            <div className="space-y-3">
+              {cartItems.map((item) => (
+                <div key={item._uid || item._id} className="flex justify-between items-start text-sm"> {/* Use _id for key fallback if _uid is missing */}
+                  <div className="flex items-start gap-3">
+                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />\n
+                    <div>
+                      <p className="font-medium text-gray-800 line-clamp-1">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">Qty: {item.quantity || item.qty}</p>
+                      {/* Correctly display Product ID using _id */}
+                      <p className="text-xs text-muted-foreground">ID: {item._id}</p>
+                      {(item.size) && (
+                        <p className="text-xs text-muted-foreground">
+                          {item.size}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-gray-800">₹{(Number(item.price) * Number(item.quantity || item.qty || 1)).toFixed(2)}</p>
+                    {item.originalPrice && Number(item.originalPrice) > Number(item.price) && (
+                      <p className="text-xs text-muted-foreground line-through">₹{(Number(item.originalPrice) * Number(item.quantity || item.qty || 1)).toFixed(2)}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="space-y-2 border-t pt-4">
+              {/* Shipping Calculation Status */}
+              {isCalculatingShipping && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mb-4">
+                  <div className="flex items-center text-blue-700">
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    <span className="text-sm">Calculating shipping charges...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Shipping Error */}
+              {shippingError && (
+                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mb-4">
+                  <div className="flex items-center text-yellow-700">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{shippingError}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span>₹ {displaySubtotal.toFixed(2)}</span>
+              </div>
+              {displayCartDiscount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span className="text-muted-foreground">Item Discount:</span>
+                  <span>- ₹ {displayCartDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Shipping ({paymentMethod === 'cod' ? 'COD' : 'Prepaid'}):
+                </span>
+                <span className={shippingCost === 0 ? "text-green-600 font-medium" : ""}>
+                  {displayShipping}
+                  {paymentMethod === 'cod' && shippingCost > 0 && (
+                    <span className="text-xs text-muted-foreground ml-1">(includes COD charges)</span>
+                  )}
+                </span>
+              </div>
+              {taxCost > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tax:</span>
+                  <span>₹ {taxCost.toFixed(2)}</span>
+                </div>
+              )}
+              {gstAmount > 0 && (
+                <>
+                  <div className="flex justify-between text-sm animate-in fade-in slide-in-from-top-1 duration-300">
+                    <span className="text-muted-foreground">GST (18%):</span>
+                    <span>₹ {gstAmount.toFixed(2)}</span>
+                  </div>
+                  {/* Visual breakdown for user confidence */}
+                  <div className="flex justify-between text-[10px] text-muted-foreground pl-4">
+                    <span>(CGST 9% + SGST 9%) Or (IGST 18%)</span>
+                  </div>
+                </>
+              )}
+
+              {/* Coupon Discount Display */}
+              {discount > 0 && totalAfterDiscount !== null && (
+                <div className="flex justify-between text-sm text-green-600 bg-green-50 p-1.5 rounded">
+                  <span className="font-medium">Coupon ({coupon}):</span>
+                  <span className="font-medium">- ₹ {(totalBeforeCoupon - finalTotal).toFixed(2)} ({discount}%)</span>
+                </div>
+              )}
+
+              {/* Total */}
+              <div className="pt-3 border-t">
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total:</span>
+                  <span>₹ {finalTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Shipping Information Card */}
+            {address && address.zipCode && (
+              <div className="mt-4 space-y-3">
+                <ShippingInfo
+                  shippingCost={shippingCost}
+                  isCalculating={isCalculatingShipping}
+                  error={shippingError}
+                  destinationPincode={address.zipCode}
+                  paymentMethod={paymentMethod}
+                />
+
+                {/* Expected Delivery Information */}
+                <ExpectedDeliverySimple
+                  destination_pin={address.zipCode}
+                  className="mt-3"
+                />
+              </div>
+            )}
+
+            {/* Checkout Error Display Area */}
+            {checkoutError && (
+              <Alert variant="destructive" className="mt-5">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Checkout Error</AlertTitle>
+                <AlertDescription className="text-xs">
+                  {checkoutError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Place Order Button - Visible only on Payment Step */}
+            {isActiveStep(3) && (
+              <Button
+                onClick={placeOrderHandler}
+                className="w-full mt-6 hover:bg-gray-800"
+                disabled={placeOrderButtonDisabled}
+                size="lg"
+              >
+                {placeOrderLoading ? (
+                  <Loader className="animate-spin mr-2 h-5 w-5" />
+                ) : null}
+                {placeOrderButtonText()}
+              </Button>
+            )}
+            {/* Info text if button is disabled due to error */}
+            {isActiveStep(3) && checkoutError && !placeOrderLoading && (
+              <p className="text-xs text-center text-destructive mt-2">Please resolve the error above before proceeding.</p>
+            )}
+
+          </div> {/* End Summary Inner Padding */}
+
+        </div> {/* End Right Side */}
+
+      </div> {/* End Flex Container */}
+    </div> // End Container
+  );
+}

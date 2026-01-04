@@ -1,0 +1,554 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Enhanced shimmer animation for skeleton loading effects */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Add fade-in animation for lazy loaded content */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Enhanced slide-in animation for mobile menus */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Add slide-in animation specifically for filter drawer */
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Enhanced banner shimmer effect */
+@keyframes banner-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Skeleton loading with shimmer effect */
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+/* Banner priority loading animations */
+.banner-priority-load {
+  animation: fadeIn 0.6s ease-out forwards;
+  z-index: 100;
+}
+
+.banner-priority-load .animate-shimmer {
+  background: linear-gradient(90deg, #e5e7eb 25%, #d1d5db 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: banner-shimmer 1.2s infinite;
+}
+
+/* Fade-in animation for lazy loaded content */
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+/* Slide animations for navigation */
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out forwards;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.3s ease-out forwards;
+}
+
+/* Zoom in animation for hero sections */
+.animate-zoom-in {
+  animation: zoomIn 0.6s ease-out forwards;
+}
+
+/* Bounce in animation for hero sections */
+.animate-bounce-in {
+  animation: bounceIn 0.6s ease-out forwards;
+}
+
+/* Slide animation for filter drawer */
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Staggered loading animation for product cards and lists */
+.staggered-load > * {
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.staggered-load > *:nth-child(1) { animation-delay: 0.05s; }
+.staggered-load > *:nth-child(2) { animation-delay: 0.1s; }
+.staggered-load > *:nth-child(3) { animation-delay: 0.15s; }
+.staggered-load > *:nth-child(4) { animation-delay: 0.2s; }
+.staggered-load > *:nth-child(5) { animation-delay: 0.25s; }
+.staggered-load > *:nth-child(6) { animation-delay: 0.3s; }
+.staggered-load > *:nth-child(7) { animation-delay: 0.35s; }
+.staggered-load > *:nth-child(8) { animation-delay: 0.4s; }
+.staggered-load > *:nth-child(9) { animation-delay: 0.45s; }
+.staggered-load > *:nth-child(10) { animation-delay: 0.5s; }
+
+/* Performance optimizations */
+.lazy-loading-container {
+  contain: layout style paint;
+  will-change: transform, opacity;
+}
+
+/* Banner loading optimizations */
+.banner-priority-load {
+  contain: layout style paint;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer,
+  .animate-fade-in,
+  .animate-slide-in-right,
+  .animate-slide-in-left,
+  .animate-slide-in-up,
+  .staggered-load > *,
+  .banner-priority-load {
+    animation: none;
+  }
+  
+  .animate-fade-in,
+  .banner-priority-load {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Loading state improvements */
+.skeleton-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Intersection observer loading states */
+.lazy-load-trigger {
+  min-height: 1px;
+  visibility: hidden;
+}
+
+/* Smooth transitions for lazy loaded images */
+.lazy-image {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.lazy-image.loading {
+  opacity: 0;
+}
+
+.lazy-image.loaded {
+  opacity: 1;
+}
+
+/* Navigation optimizations */
+.navbar-container {
+  contain: layout style;
+  transform: translateZ(0); /* Force hardware acceleration */
+}
+
+.footer-container {
+  contain: layout style;
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  .mobile-optimized {
+    contain: layout style paint;
+  }
+  
+  .mobile-nav-item {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* White background */
+    --foreground: 0 0% 15%; /* Dark text for readability */
+    
+    --primary: 0 0% 17%; /* #2B2B2B for primary elements */
+    --primary-foreground: 0 0% 100%; /* White text on dark buttons */
+    
+    --secondary: 0 0% 96%; /* Light gray for secondary elements */
+    --secondary-foreground: 0 0% 15%;
+    
+    --accent: 262 83% 58%; /* Keep purple accent */
+    --accent-foreground: 0 0% 100%;
+    
+    --card: 0 0% 100%; /* White cards */
+    --card-foreground: 0 0% 15%;
+    
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    
+    --ring: 0 0% 17%; /* #2B2B2B for focus rings */
+    
+    --radius: 0.5rem;
+    
+    --success: 142 76% 45%;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
+    --info: 214 95% 93%;
+
+    /* Brand colors */
+    --brand-primary: 0 0% 17%; /* #2B2B2B */
+    --brand-secondary: 262 83% 58%;
+    --brand-accent: 280 87% 65%;
+    
+    /* UI-specific colors */
+    --ui-background: 0 0% 100%; /* White */
+    --ui-foreground: 0 0% 15%;
+    --ui-card: 0 0% 100%;
+    --ui-card-foreground: 0 0% 15%;
+    --ui-border: 0 0% 90%;
+    --ui-divider: 0 0% 90%;
+  }
+
+  /* Dark mode overrides */
+  .dark {
+    --background: 0 0% 17%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 19%;
+    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 19%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 260 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 22%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 0 0% 22%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --ring: 260 84% 60%;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-br from-gray-800 via-gray-700 to-gray-900;
+  }
+  
+  .gradient-bg-primary {
+    @apply bg-gradient-to-r from-gray-900 to-gray-800;
+  }
+  
+  .gradient-bg-secondary {
+    @apply bg-gradient-to-r from-gray-100 to-gray-200;
+  }
+  
+  .gradient-card {
+    @apply bg-white backdrop-blur-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow;
+  }
+  
+  .gradient-badge {
+    @apply bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply bg-[#2B2B2B] text-white 
+           hover:bg-gray-800
+           transition-all active:scale-[0.98] font-medium;
+  }
+
+  .btn-outline {
+    @apply border border-gray-300 bg-white text-[#2B2B2B]
+           hover:bg-gray-50 hover:border-gray-400
+           transition-all active:scale-[0.98];
+  }
+
+  /* Card styles */
+  .card-hover {
+    @apply transition-all hover:shadow-md hover:border-gray-300;
+  }
+
+  /* Nav styles */
+  .nav-link {
+    @apply text-gray-700 hover:text-[#2B2B2B] transition-colors;
+  }
+
+  /* Form element styles */
+  .form-input {
+    @apply bg-white border border-gray-300 focus:border-[#2B2B2B] focus:ring-1 focus:ring-[#2B2B2B];
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  /* Ensure all elements inherit dark theme properly */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  
+
+  body {
+    @apply bg-white text-gray-800;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium text-gray-900;
+  }
+  a {
+    @apply text-[#2B2B2B] hover:text-gray-700 transition-colors;
+  }
+}
+
+/* Utility Classes */
+.ownContainer {
+  @apply max-w-full w-full mx-auto;
+}
+.textGap {
+  @apply tracking-[0.6px];
+}
+.heading {
+  @apply tracking-[0.6px] text-2xl font-medium text-gray-900 sm:text-3xl;
+}
+.subHeading {
+  @apply tracking-[0.6px] text-xl font-medium text-gray-800 sm:text-2xl;
+}
+.para {
+  @apply tracking-[0.6px] text-sm font-normal text-gray-700 sm:text-base;
+}
+
+/* Enhanced hover effects */
+.hover\:bg-primary:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+.hover\:bg-secondary:hover {
+  background-color: hsl(var(--secondary) / 0.9);
+}
+
+/* Enhanced shadows for depth */
+.shadow-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-card-hover:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Animation classes */
+.animate-nav-slide {
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Animation utilities for server components */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.05); opacity: 0.1; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 0.3; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-pulse-effect {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-in-out infinite;
+}
+
+.animate-card-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Default backgrounds and text */
+.bg-light {
+  background-color: #ffffff;
+}
+
+.text-dark {
+  color: #2B2B2B;
+}
+
+/* Mobile filter drawer styles - improved version */
+.mobile-filter-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-filter-drawer {
+  width: 85%;
+  max-width: 350px;
+  height: 100vh;
+  background: white;
+  overflow-y: auto;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 101;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  transform: translateX(0);
+  transition: transform 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
