@@ -4,9 +4,28 @@ const webpack = require('webpack');
 
 const nextConfig = {
   images: {
-    domains: ['res.cloudinary.com', 'via.placeholder.com', 'placehold.co', 'lh3.googleusercontent.com'],
-    // ...existing code...
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+    ],
   },
+  
+  // Turbopack configuration (Next.js 16+ uses Turbopack by default)
+  turbopack: {},
   webpack: (config, { isServer }) => {
     // Exclude Node.js built-in modules from client-side bundle
     if (!isServer) {
