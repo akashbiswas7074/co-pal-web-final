@@ -50,6 +50,8 @@ const ShopPage = () => {
   const [localSearchQuery, setLocalSearchQuery] = useState<string>(searchQuery || '');
   const productsPerPage = 12;
   const hasAttemptedLoad = useRef(false);
+  const isUpdatingURL = useRef(false);
+  const isInitialMount = useRef(true);
 
   // Debug logging to track what's happening
   useEffect(() => {
@@ -318,34 +320,57 @@ const ShopPage = () => {
     }
   };
 
-  // Update URL when sort, view, or page changes
+  // Sync state from URL on initial mount only
   useEffect(() => {
-    if (!searchParams) return;
+    if (!searchParams || !isInitialMount.current) return;
+    
+    const urlSort = searchParams.get('sort') || 'featured';
+    const urlView = searchParams.get('view') === 'list' ? 'list' : 'grid';
+    const urlPage = parseInt(searchParams.get('page') || '1', 10);
+    
+    if (urlSort !== sortOption) setSortOption(urlSort);
+    if (urlView !== viewMode) setViewMode(urlView);
+    if (urlPage !== currentPage) setCurrentPage(urlPage);
+    
+    isInitialMount.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
-    const params = new URLSearchParams(searchParams.toString());
+  // Update URL when sort, view, or page changes (but not on initial mount)
+  useEffect(() => {
+    if (isInitialMount.current || isUpdatingURL.current) return;
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams();
 
     if (sortOption && sortOption !== 'featured') {
       params.set('sort', sortOption);
-    } else {
-      params.delete('sort');
     }
 
     if (viewMode === 'list') {
       params.set('view', 'list');
-    } else {
-      params.delete('view');
     }
 
     if (currentPage > 1) {
       params.set('page', currentPage.toString());
-    } else {
-      params.delete('page');
     }
 
     const newQuery = params.toString();
+    const currentUrl = new URL(window.location.href);
+    const currentQuery = currentUrl.searchParams.toString();
     const path = `${window.location.pathname}${newQuery ? `?${newQuery}` : ''}`;
-    router.replace(path, { scroll: false });
-  }, [sortOption, viewMode, currentPage, searchParams, router]);
+    const currentPath = `${window.location.pathname}${currentQuery ? `?${currentQuery}` : ''}`;
+    
+    // Only update if the URL actually changed
+    if (path !== currentPath) {
+      isUpdatingURL.current = true;
+      router.replace(path, { scroll: false });
+      // Reset the flag after a short delay to allow the URL to update
+      setTimeout(() => {
+        isUpdatingURL.current = false;
+      }, 100);
+    }
+  }, [sortOption, viewMode, currentPage, router]); // Removed searchParams from dependencies
 
   // Get title based on page type
   const getPageTitle = () => {
