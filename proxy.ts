@@ -2,7 +2,7 @@ import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 import type { NextRequest, NextFetchEvent } from 'next/server';
 
-// Define a middleware function that handles image and category path processing
+// Define a proxy function that handles image and category path processing
 function handleImageAndCategoryRequests(request: NextRequest) {
   // Check for nonexistent categories and provide a better response
   if (request.nextUrl.pathname.startsWith('/shop/category/')) {
@@ -41,9 +41,9 @@ function logRoutingInfo(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Combined middleware for both authentication and image/category handling
+// Combined proxy for both authentication and image/category handling
 export default withAuth(
-  function middleware(request) {
+  function proxy(request) {
     // Add route debugging (remove in production)
     if (process.env.NODE_ENV === 'development' && 
         request.nextUrl.pathname.startsWith('/shop')) {
@@ -97,7 +97,7 @@ export default withAuth(
   }
 );
 
-// Configure matcher to specify which paths should trigger the middleware
+// Configure matcher to specify which paths should trigger the proxy
 export const config = {
   matcher: [
     // Auth routes

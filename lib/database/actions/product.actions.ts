@@ -8,7 +8,7 @@ import SubCategory from "../models/subCategory.model";
 import User from "../models/user.model";
 import Tag from "../models/tag.model";
 import { redirect } from "next/navigation";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import Size from "../models/size.model";   // Add this import
 
 // Helper function to extract the first image URL and discount
@@ -655,7 +655,8 @@ export async function createProductReview(
           updatedProduct.reviews.length;
         await updatedProduct.save();
         await updatedProduct.populate("reviews.reviewBy");
-        revalidateTag("product");
+        revalidatePath(`/product/${productId}`);
+        revalidatePath("/shop");
         return JSON.parse(
           JSON.stringify({ reviews: updatedProduct.reviews.reverse() })
         );
@@ -673,7 +674,8 @@ export async function createProductReview(
           product.reviews.length;
         await product.save();
         await product.populate("reviews.reviewBy");
-        revalidateTag("product");
+        revalidatePath(`/product/${productId}`);
+        revalidatePath("/shop");
 
         return JSON.parse(
           JSON.stringify({ reviews: product.reviews.reverse() })

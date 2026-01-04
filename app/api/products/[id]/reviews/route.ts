@@ -5,7 +5,7 @@ import User from "@/lib/database/models/user.model";
 import Order from "@/lib/database/models/order.model";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function POST(
   req: NextRequest,
@@ -224,7 +224,8 @@ export async function POST(
     }
 
     // Revalidate product cache
-    revalidateTag("product");
+    revalidatePath(`/product/${productId}`);
+    revalidatePath("/shop");
 
     return NextResponse.json({
       success: true,
