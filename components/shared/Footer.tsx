@@ -275,7 +275,7 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
       links = footer?.helpLinks || [
         { title: "Customer Service", url: "/contact" },
         { title: "My Account", url: "/profile" },
-        { title: "Find a Store", url: "#" },
+        { title: "Find a Store", url: "/nearby-shops" },
         { title: "Legal & Privacy", url: "#" },
         { title: "Gift Card", url: "#" }
       ];

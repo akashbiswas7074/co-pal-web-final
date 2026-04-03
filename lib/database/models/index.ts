@@ -48,6 +48,7 @@ import './website.section.model';
 import './website.settings.model';
 import './wishlist.model';
 import './custom-page.model';
+import './shop.model';
 
 // Optional: Re-export models if you prefer importing them via this index file.
 // e.g., export { default as User } from './user.model';

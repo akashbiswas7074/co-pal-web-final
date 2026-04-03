@@ -1,6 +1,9 @@
+@import 'leaflet/dist/leaflet.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Leaflet Map Styles */
 
 /* Enhanced shimmer animation for skeleton loading effects */
 @keyframes shimmer {
