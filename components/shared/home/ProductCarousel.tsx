@@ -141,48 +141,41 @@ const ProductCarousel = ({
   return (
     <div className="w-full mx-auto py-8 sm:py-10 relative px-4 sm:px-6 lg:px-8 max-w-[90%]"> {/* Added max-w-7xl and responsive padding */}
       <div className="flex justify-between items-center mb-5 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">{heading}</h2> {/* Adjusted heading style */}
-        <div className="flex items-center gap-2">
-           <Link href={viewAllLink}>
-             {/* Adjusted Shop All button style */}
-             <Button variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
-                Shop All
-             </Button>
-           </Link>
-           {/* Navigation Buttons - styled to match image */}
-           <Button
-             variant="ghost"
-             size="icon"
-             className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-             onClick={scrollPrev}
-           >
-             <ChevronLeft className="h-5 w-5" />
-             <span className="sr-only">Previous</span>
-           </Button>
-           <Button
-             variant="ghost"
-             size="icon"
-             className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-             onClick={scrollNext}
-           >
-             <ChevronRight className="h-5 w-5" />
-             <span className="sr-only">Next</span>
-           </Button>
-        </div>
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">{heading}</h2>
+        <Link href={viewAllLink}>
+          <Button variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
+            Shop All
+          </Button>
+        </Link>
       </div>
-      <div className="embla overflow-hidden -mx-2 sm:-mx-3" ref={emblaRef}> {/* Adjusted negative margins */}
-        <div className="embla__container flex -ml-2 sm:-ml-3"> {/* Adjusted negative margins */}
+      <div className="embla overflow-hidden -mx-2 sm:-mx-3" ref={emblaRef}>
+        <div className="embla__container flex -ml-2 sm:-ml-3">
           {enhancedProducts.map((product) => (
             <div
               key={product.id}
-              // Adjusted slide width for better responsiveness and spacing
-              // 1 card on xs and sm, 4 cards on md+
               className="embla__slide flex-[0_0_100%] md:flex-[0_0_calc(100%/4)] lg:flex-[0_0_calc(100%/4)] xl:flex-[0_0_calc(100%/4)] px-2 sm:px-3"
             >
               <ProductCardSmall product={product} />
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="flex justify-center items-center gap-4 mt-8 sm:mt-12">
+        <button
+          onClick={scrollPrev}
+          className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-100 bg-gray-100 text-black hover:bg-gray-200"
+          aria-label="Previous products"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <button
+          onClick={scrollNext}
+          className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 bg-black text-white hover:bg-gray-800 shadow-lg"
+          aria-label="Next products"
+        >
+          <ChevronRight size={24} />
+        </button>
       </div>
     </div>
   );

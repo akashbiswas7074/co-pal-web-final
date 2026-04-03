@@ -159,36 +159,11 @@ const CategoryProductSection = ({
               Shop {categoryName}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href={`/shop/category/${categorySlug}`} passHref>
-              <Button variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
-                View All
-              </Button>
-            </Link>
-            {/* Only show navigation buttons on non-mobile view */}
-            {!isMobileView && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-                  onClick={scrollPrev}
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                  <span className="sr-only">Previous</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-                  onClick={scrollNext}
-                >
-                  <ChevronRight className="h-5 w-5" />
-                  <span className="sr-only">Next</span>
-                </Button>
-              </>
-            )}
-          </div>
+          <Link href={`/shop/category/${categorySlug}`} passHref>
+            <Button variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
+              View All
+            </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
@@ -235,6 +210,24 @@ const CategoryProductSection = ({
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Navigation Buttons for products */}
+            <div className="flex justify-center items-center gap-4 mt-8">
+                <button
+                    onClick={scrollPrev}
+                    className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-100 bg-gray-100 text-black hover:bg-gray-200"
+                    aria-label="Previous products"
+                >
+                    <ChevronLeft size={24} />
+                </button>
+                <button
+                    onClick={scrollNext}
+                    className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 bg-black text-white hover:bg-gray-800 shadow-lg"
+                    aria-label="Next products"
+                >
+                    <ChevronRight size={24} />
+                </button>
             </div>
           </div>
           

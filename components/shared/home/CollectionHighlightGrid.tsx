@@ -37,7 +37,7 @@ const CollectionHighlightGrid: React.FC<CollectionHighlightGridProps> = ({ title
             className="py-20 overflow-hidden"
             style={{ backgroundColor: backgroundColor || '#ffffff' }}
         >
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12">
+            <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-12">
                 <div className="text-center mb-16 space-y-4">
                     <h2
                         className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight"
@@ -55,7 +55,7 @@ const CollectionHighlightGrid: React.FC<CollectionHighlightGridProps> = ({ title
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-10 justify-center">
                     {items.map((item, index) => {
                         // Use gridSpan from DB, default to 1 if not provided or 0
                         const gridSpan = item.gridSpan || 1;
@@ -65,6 +65,9 @@ const CollectionHighlightGrid: React.FC<CollectionHighlightGridProps> = ({ title
                             span = "md:col-span-8";
                         } else if (gridSpan === 3) {
                             span = "md:col-span-12";
+                        } else if (items.length <= 2) {
+                            // If there are only 1 or 2 items with gridSpan 1, give them more space
+                            span = "md:col-span-6";
                         }
 
                         return (
@@ -74,7 +77,7 @@ const CollectionHighlightGrid: React.FC<CollectionHighlightGridProps> = ({ title
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                                className={`${span} relative group h-[300px] sm:h-[350px] md:h-[400px] rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-500`}
+                                className={`${span} relative group h-[400px] sm:h-[500px] md:h-[650px] rounded-[2.5rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-500`}
                             >
                                 {/* Background Image */}
                                 <Image
@@ -97,10 +100,10 @@ const CollectionHighlightGrid: React.FC<CollectionHighlightGridProps> = ({ title
                                 )}
 
                                 {/* Content */}
-                                <div className="absolute inset-0 z-20 p-8 sm:p-12 flex flex-col justify-between">
-                                    <div className="max-w-[80%] space-y-3">
+                                <div className="absolute inset-0 z-20 p-10 sm:p-14 flex flex-col justify-between">
+                                    <div className="max-w-[90%] space-y-4">
                                         <h3
-                                            className="text-2xl sm:text-3xl md:text-4xl font-black leading-tight transition-colors"
+                                            className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight transition-colors"
                                             style={{ color: item.titleColor || '#111827' }}
                                         >
                                             {item.title}

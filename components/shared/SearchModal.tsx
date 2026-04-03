@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader, Search, X, TrendingUp, Clock, Sparkles } from "lucide-react";
 import { getCategoriesWithProductCount } from "@/lib/database/actions/categories.actions";
 import { ProductCardSmall } from "@/components/shared/product/ProductCardSmall";
+import { useNavbarSettings } from "@/hooks/use-navbar-settings";
 import { handleError } from "@/lib/utils";
 import { toast } from "sonner";
 import { debounce } from "lodash";
@@ -172,6 +173,28 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
     debouncedSearch(recentSearch);
   };
 
+  const { settings: navbarSettings } = useNavbarSettings();
+  
+  const hexToRgba = (hex: string, opacity: number) => {
+    let r = 0, g = 0, b = 0;
+    if (!hex) return `rgba(255, 255, 255, ${opacity})`;
+    if (hex.length === 4) {
+      r = parseInt(hex[1] + hex[1], 16);
+      g = parseInt(hex[2] + hex[2], 16);
+      b = parseInt(hex[3] + hex[3], 16);
+    } else if (hex.length === 7) {
+      r = parseInt(hex.substring(1, 3), 16);
+      g = parseInt(hex.substring(3, 5), 16);
+      b = parseInt(hex.substring(5, 7), 16);
+    }
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
+
+  const dynamicTextColor = navbarSettings?.textColor || '#1a1a1a';
+  const dynamicBgColor = navbarSettings?.backgroundColorValue || '#ffffff';
+  const dynamicBgContrast = hexToRgba(dynamicTextColor, 0.05);
+  const dynamicBorderColor = hexToRgba(dynamicTextColor, 0.1);
+
   // Handle click outside to close modal
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -202,14 +225,15 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] ">
-      <div className="flex items-start justify-center min-h-screen pt-[8vh] px-4">
+    <div className="fixed inset-0 z-[2100] bg-black md:bg-black/60 md:backdrop-blur-sm transition-all duration-300">
+      <div className="flex items-start justify-center min-h-screen">
         <div 
           ref={modalRef}
-          className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300"
+          className="w-full h-screen md:h-auto md:max-w-4xl md:rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 flex flex-col"
+          style={{ backgroundColor: dynamicBgColor, color: dynamicTextColor }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div className="flex items-center justify-between p-4 md:p-6 border-b" style={{ borderColor: dynamicBorderColor }}>
             <div className="flex items-center gap-3">
               {/* <div className="p-2 bg-blue-100 rounded-full">
                 <Search className="h-5 w-5 text-blue-600" />
@@ -221,20 +245,26 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 rounded-full transition-colors"
+              style={{ backgroundColor: dynamicBgContrast }}
             >
-              <X className="h-5 w-5 text-gray-500" />
+              <X className="h-5 w-5" style={{ color: dynamicTextColor }} />
             </button>
           </div>
 
           {/* Search Input */}
-          <div className="p-6 border-b border-gray-100">
+          <div className="p-4 md:p-6 border-b" style={{ borderColor: dynamicBorderColor }}>
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 opacity-40" />
               <Input
                 type="search"
                 placeholder="Search for products, brands, categories..."
-                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors"
+                className="w-full pl-12 pr-4 py-8 md:py-10 text-lg border-2 rounded-xl focus:ring-0 transition-all duration-300"
+                style={{ 
+                  backgroundColor: dynamicBgContrast, 
+                  borderColor: dynamicBorderColor,
+                  color: dynamicTextColor
+                }}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 autoFocus
@@ -257,23 +287,23 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
               <div className="p-6 space-y-8">
                 {/* Browse by Categories */}
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    {/* <Sparkles className="h-4 w-4 text-purple-500" /> */}
-                    <h3 className="text-base font-semibold text-gray-900">Browse by Category</h3>
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-semibold opacity-70">Browse by Category</h3>
                   </div>
-                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {categories.map((category: any) => (
                       <button
                         key={category._id}
                         onClick={() => handleCategoryClick(category.name)}
-                        className="p-2 bg-gray-50 hover:bg-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-all duration-200 group text-center"
+                        className="p-3 rounded-lg border transition-all duration-200 group text-center"
+                        style={{ 
+                          backgroundColor: dynamicBgContrast,
+                          borderColor: dynamicBorderColor
+                        }}
                       >
-                        {/* <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mx-auto mb-1 group-hover:scale-105 transition-transform shadow-sm">
-                          <span className="text-sm font-semibold text-gray-600">{category.name.charAt(0)}</span>
-                        </div> */}
-                        <p className="font-medium text-gray-900 text-xs truncate">{category.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {category.productCount || 0}
+                        <p className="font-semibold text-xs truncate mb-1">{category.name}</p>
+                        <p className="text-[10px] opacity-50">
+                          {category.productCount || 0} Products
                         </p>
                       </button>
                     ))}
@@ -443,7 +473,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
                     </p>
                     <button
                       onClick={() => setQuery("")}
-                      className="text-blue-600 hover:text-blue-700 font-medium"
+                      className="font-medium underline opacity-70 hover:opacity-100"
                     >
                       ← Back to browse
                     </button>

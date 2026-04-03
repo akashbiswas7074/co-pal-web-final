@@ -104,9 +104,9 @@ const trackHeroInteraction = (action: string, heroId: string, buttonLabel?: stri
 };
 
 export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
-  const { 
-    title, 
-    subtitle, 
+  const {
+    title,
+    subtitle,
     longDescription,
     buttons = [],
     pattern = "standard",
@@ -121,11 +121,11 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
     entryAnimation = "fadeIn",
     layoutId // Extract layoutId for section navigation
   } = data;
-  
+
   // Generate a fallback section ID based on title or pattern if layoutId is not provided
   const generateSectionId = useCallback(() => {
     if (layoutId) return layoutId;
-    
+
     // Create a slug from title or use pattern as fallback
     const baseText = title || pattern || 'hero-section';
     return baseText
@@ -148,7 +148,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [backgroundImageError, setBackgroundImageError] = useState(false);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const { ref: heroRef, hasIntersected } = useIntersectionObserver({ threshold: 0.1 });
 
@@ -192,7 +192,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
   const getAnimationClass = useCallback(() => {
     const baseClass = 'transition-all duration-700 ease-out';
     if (!hasIntersected) return `${baseClass} opacity-0 translate-y-8`;
-    
+
     switch (entryAnimation) {
       case 'slideInLeft': return `${baseClass} opacity-100 transform translate-x-0`;
       case 'slideInRight': return `${baseClass} opacity-100 transform translate-x-0`;
@@ -272,10 +272,10 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
               </div>
             ) : (
               <>
-                <Image 
-                  src={mediaUrl} 
-                  alt={title || 'Hero image'} 
-                  width={800} 
+                <Image
+                  src={mediaUrl}
+                  alt={title || 'Hero image'}
+                  width={800}
                   height={600}
                   className={cn(
                     "w-full h-full object-cover transition-all duration-500 group-hover:scale-105",
@@ -381,7 +381,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
     // Calculate CSS classes for proper styling
     const getButtonClasses = () => {
       let classes = "transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl px-8 py-4 text-base font-semibold rounded-lg min-w-[160px]";
-      
+
       // Add custom hover effects based on colors
       if (buttonBackgroundColor || buttonTextColor) {
         classes += " hover:opacity-90";
@@ -473,7 +473,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
     switch (pattern?.toLowerCase()?.trim()) {
       case 'dont-miss':
         return (
-          <section 
+          <section
             id={sectionId}
             ref={heroRef}
             {...commonProps}
@@ -483,33 +483,33 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
               <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-white to-transparent rounded-full -translate-x-48 -translate-y-48"></div>
               <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-white to-transparent rounded-full translate-x-48 translate-y-48"></div>
             </div>
-            
+
             <div className="container mx-auto px-4 relative z-10">
               <div className="flex flex-col md:flex-row items-center gap-12">
-                <div className="md:w-1/2 space-y-8">
+                <div className="md:w-1/2 space-y-8 text-center md:text-left flex flex-col items-center md:items-start">
                   {title && (
-                    <h2 
-                      className="text-3xl md:text-5xl lg:text-6xl font-black uppercase tracking-wider leading-tight"
+                    <h2
+                      className="text-3xl md:text-5xl lg:text-6xl font-black uppercase tracking-wider leading-tight w-full"
                       style={{ color: titleColor || 'white' }}
                     >
                       {title}
                     </h2>
                   )}
                   {subtitle && (
-                    <p 
-                      className="text-lg md:text-xl leading-relaxed opacity-90"
+                    <p
+                      className="text-lg md:text-xl leading-relaxed opacity-90 w-full"
                       style={{ color: descriptionColor || 'rgba(255,255,255,0.9)' }}
                     >
                       {subtitle}
                     </p>
                   )}
                   {longDescription && (
-                    <p className="text-base opacity-75 max-w-md leading-relaxed">
+                    <p className="text-base opacity-75 max-w-md leading-relaxed w-full text-justify">
                       {longDescription}
                     </p>
                   )}
                   {buttons.length > 0 && (
-                    <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                       {buttons.map((button, index) => (
                         <EnhancedButton key={index} button={button} index={index} />
                       ))}
@@ -517,7 +517,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
                   )}
                 </div>
                 {mediaUrl && (
-                  <div className="md:w-1/2">
+                  <div className="md:w-1/2 w-[90%] mx-auto">
                     <MediaComponent className="aspect-video md:aspect-square" />
                   </div>
                 )}
@@ -528,46 +528,46 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
 
       case 'brand-control':
         return (
-          <section 
+          <section
             id={sectionId}
             ref={heroRef}
             {...commonProps}
             className={cn("py-16 md:py-24 bg-white relative overflow-hidden", getAnimationClass())}
           >
             <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-bl from-blue-50 to-transparent rounded-full translate-x-36 -translate-y-36"></div>
-            
+
             <div className="container mx-auto px-4 relative z-10">
               <div className="flex flex-col md:flex-row items-center gap-12">
                 {mediaUrl && (
-                  <div className="md:w-1/2 order-2 md:order-1">
+                  <div className="md:w-1/2 w-[90%] mx-auto order-2 md:order-1">
                     <MediaComponent className="aspect-video" />
                   </div>
                 )}
-                <div className="md:w-1/2 order-1 md:order-2 space-y-8">
+                <div className="md:w-1/2 order-1 md:order-2 space-y-8 text-center md:text-left flex flex-col items-center md:items-start">
                   {title && (
-                    <h2 
-                      className="text-3xl md:text-5xl font-bold leading-tight relative"
+                    <h2
+                      className="text-3xl md:text-5xl font-bold leading-tight relative w-full"
                       style={{ color: titleColor || '#1f2937' }}
                     >
                       {title}
-                      <div className="absolute -bottom-2 left-0 w-24 h-1 bg-blue-500 rounded-full"></div>
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 w-24 h-1 bg-blue-500 rounded-full"></div>
                     </h2>
                   )}
                   {subtitle && (
-                    <p 
-                      className="text-lg md:text-xl leading-relaxed"
+                    <p
+                      className="text-lg md:text-xl leading-relaxed w-full"
                       style={{ color: descriptionColor || '#6b7280' }}
                     >
                       {subtitle}
                     </p>
                   )}
                   {longDescription && (
-                    <p className="text-base text-gray-600 leading-relaxed max-w-md">
+                    <p className="text-base text-gray-600 leading-relaxed max-w-md w-full text-justify">
                       {longDescription}
                     </p>
                   )}
                   {buttons.length > 0 && (
-                    <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                       {buttons.map((button, index) => (
                         <EnhancedButton key={index} button={button} index={index} />
                       ))}
@@ -581,7 +581,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
 
       case 'partner':
         return (
-          <section 
+          <section
             id={sectionId}
             ref={heroRef}
             {...commonProps}
@@ -591,34 +591,34 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
               <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-100 to-transparent rounded-full -translate-x-48 -translate-y-48"></div>
               <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-blue-100 to-transparent rounded-full translate-x-48 translate-y-48"></div>
             </div>
-            
+
             <div className="container mx-auto px-4 relative z-10">
               <div className="flex flex-col md:flex-row items-center gap-12">
-                <div className="md:w-1/2 space-y-8">
+                <div className="md:w-1/2 space-y-8 text-center md:text-left flex flex-col items-center md:items-start">
                   {title && (
-                    <h2 
-                      className="text-3xl md:text-5xl font-bold leading-tight relative"
+                    <h2
+                      className="text-3xl md:text-5xl font-bold leading-tight relative w-full"
                       style={{ color: titleColor || '#1f2937' }}
                     >
                       {title}
-                      <div className="absolute -bottom-2 left-0 w-24 h-1 bg-purple-500 rounded-full"></div>
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 w-24 h-1 bg-purple-500 rounded-full"></div>
                     </h2>
                   )}
                   {subtitle && (
-                    <p 
-                      className="text-lg md:text-xl leading-relaxed"
+                    <p
+                      className="text-lg md:text-xl leading-relaxed w-full"
                       style={{ color: descriptionColor || '#6b7280' }}
                     >
                       {subtitle}
                     </p>
                   )}
                   {longDescription && (
-                    <p className="text-base text-gray-600 leading-relaxed max-w-md">
+                    <p className="text-base text-gray-600 leading-relaxed max-w-md w-full text-justify">
                       {longDescription}
                     </p>
                   )}
                   {buttons.length > 0 && (
-                    <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                       {buttons.map((button, index) => (
                         <EnhancedButton key={index} button={button} index={index} />
                       ))}
@@ -626,7 +626,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
                   )}
                 </div>
                 {mediaUrl && (
-                  <div className="md:w-1/2">
+                  <div className="md:w-1/2 w-[90%] mx-auto">
                     <MediaComponent className="aspect-video" />
                   </div>
                 )}
@@ -637,7 +637,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
 
       default: // Standard pattern
         return (
-          <section 
+          <section
             id={sectionId}
             ref={heroRef}
             {...commonProps}
@@ -647,8 +647,8 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
               getAnimationClass()
             )}
             style={{
-              backgroundImage: (backgroundImage && !backgroundImageError) ? 
-                `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url(${backgroundImage})` : 
+              backgroundImage: (backgroundImage && !backgroundImageError) ?
+                `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url(${backgroundImage})` :
                 undefined,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
@@ -662,33 +662,33 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
                 onError={handleBackgroundImageError}
               />
             )}
-            
+
             {(backgroundImage && !backgroundImageError) && (
               <div className="absolute inset-0 bg-black/40"></div>
             )}
-            
+
             {(!backgroundImage || backgroundImageError) && (
               <>
                 <div className="absolute top-0 left-0 w-96 h-96 bg-blue-50 rounded-full blur-3xl opacity-50 -translate-x-48 -translate-y-48"></div>
                 <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-50 rounded-full blur-3xl opacity-50 translate-x-48 translate-y-48"></div>
               </>
             )}
-            
+
             <div className="container mx-auto px-4 relative z-10">
               <div className={cn(
                 "text-center max-w-5xl mx-auto space-y-10",
                 contentAlignment === 'left' && "text-left ml-0 max-w-4xl",
                 contentAlignment === 'right' && "text-right mr-0 max-w-4xl"
               )}>
-                
+
                 <div className="space-y-6">
                   {title && (
-                    <h1 
+                    <h1
                       className={cn(
                         "text-4xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight",
                         backgroundImage ? "text-white drop-shadow-2xl" : "text-gray-900"
                       )}
-                      style={{ 
+                      style={{
                         color: titleColor || undefined,
                         textShadow: backgroundImage ? '2px 2px 4px rgba(0,0,0,0.5)' : 'none'
                       }}
@@ -696,16 +696,16 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
                       {title}
                     </h1>
                   )}
-                  
+
                   {subtitle && (
-                    <p 
+                    <p
                       className={cn(
                         "text-lg md:text-xl lg:text-2xl font-medium leading-relaxed max-w-3xl mx-auto",
                         backgroundImage ? "text-white/90 drop-shadow-lg" : "text-gray-600",
                         contentAlignment === 'left' && "mx-0",
                         contentAlignment === 'right' && "mx-0"
                       )}
-                      style={{ 
+                      style={{
                         color: descriptionColor || undefined
                       }}
                     >
@@ -715,23 +715,23 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
                 </div>
 
                 {longDescription && (
-                  <div 
+                  <div
                     className={cn(
-                      "text-base md:text-lg leading-relaxed max-w-2xl mx-auto",
+                      "text-base md:text-lg leading-relaxed max-w-2xl mx-auto text-justify",
                       backgroundImage ? "text-white/80" : "text-gray-700",
                       contentAlignment === 'left' && "mx-0",
                       contentAlignment === 'right' && "mx-0"
                     )}
-                    style={{ 
+                    style={{
                       color: descriptionColor || undefined
                     }}
                   >
                     {longDescription}
                   </div>
                 )}
-                
+
                 {buttons && buttons.length > 0 && (
-                  <div 
+                  <div
                     className={cn(
                       "flex flex-wrap gap-4 md:gap-6",
                       contentAlignment === 'center' && "justify-center",
@@ -744,18 +744,18 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
                     ))}
                   </div>
                 )}
-                
-                {mediaUrl && (
-                  <div className="mt-16 max-w-4xl mx-auto">
-                    <MediaComponent className="aspect-video" />
-                  </div>
-                )}
               </div>
+
+              {mediaUrl && (
+                <div className="mt-16 w-[90%] md:w-full md:max-w-7xl mx-auto">
+                  <MediaComponent className="aspect-video" />
+                </div>
+              )}
             </div>
           </section>
         );
     }
   };
-  
+
   return renderPatternContent();
 }

@@ -178,33 +178,11 @@ const FeaturedVideoSection: React.FC<FeaturedVideoSectionProps> = ({ videos }) =
       >
         <div className="flex justify-between items-center mb-5 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">DIY Products Videos</h2>
-          <div className="flex items-center gap-2">
-            {/* View All link styled similarly to Shop All in ProductCarousel */}
+          <Link href="/videos">
             <Button variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
               View All
             </Button>
-            {/* Navigation Buttons styled to match ProductCarousel */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-              onClick={scrollPrev}
-              disabled={prevBtnDisabled}
-            >
-              <ChevronLeft className="h-5 w-5" />
-              <span className="sr-only">Previous</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-              onClick={scrollNext}
-              disabled={nextBtnDisabled}
-            >
-              <ChevronRight className="h-5 w-5" />
-              <span className="sr-only">Next</span>
-            </Button>
-          </div>
+          </Link>
         </div>
 
         <div className="embla overflow-hidden -mx-2 sm:-mx-3" ref={emblaRef}>
@@ -265,6 +243,31 @@ const FeaturedVideoSection: React.FC<FeaturedVideoSectionProps> = ({ videos }) =
               );
             })}
           </div>
+        </div>
+
+        <div className="flex justify-center items-center gap-4 mt-8 sm:mt-12">
+            <button
+                onClick={scrollPrev}
+                disabled={prevBtnDisabled}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-100 ${!prevBtnDisabled
+                        ? "bg-gray-100 text-black hover:bg-gray-200"
+                        : "bg-gray-50 text-gray-300 cursor-not-allowed"
+                    }`}
+                aria-label="Previous videos"
+            >
+                <ChevronLeft size={24} />
+            </button>
+            <button
+                onClick={scrollNext}
+                disabled={nextBtnDisabled}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${!nextBtnDisabled
+                        ? "bg-black text-white hover:bg-gray-800 shadow-lg"
+                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    }`}
+                aria-label="Next videos"
+            >
+                <ChevronRight size={24} />
+            </button>
         </div>
       </div>
 

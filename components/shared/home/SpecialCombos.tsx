@@ -112,6 +112,35 @@ const SpecialCombos = ({ comboData }: { comboData: SpecialComboDataType }) => {
             </div>
           </div>
         </Link>
+
+        {showNavigation && (
+          <div className="flex justify-center items-center gap-4 mt-8 sm:mt-12">
+            <button
+              onClick={scrollToPrev}
+              disabled={activeSlide === 0}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-100 ${
+                activeSlide !== 0
+                  ? "bg-gray-100 text-black hover:bg-gray-200"
+                  : "bg-gray-50 text-gray-300 cursor-not-allowed"
+              }`}
+              aria-label="Previous combo"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <button
+              onClick={scrollToNext}
+              disabled={activeSlide === comboData.offers.length - 1}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                activeSlide !== comboData.offers.length - 1
+                  ? "bg-black text-white hover:bg-gray-800 shadow-lg"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+              aria-label="Next combo"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

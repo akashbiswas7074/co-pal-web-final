@@ -13,13 +13,26 @@ const Preloader: React.FC = () => {
   useEffect(() => {
     if (logoLoading) return; // Don't start timer until logo is loaded
 
+    // Synchronize scroll on mount
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.body.style.overflow = "hidden";
+    }
+
     // Hide preloader after a fixed duration to allow path animation to finish
-    // Reduced from 5.5s to 3s for a snappier experience
     const timer = setTimeout(() => {
       setLoading(false);
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "unset";
+      }
     }, 3000); 
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "unset";
+      }
+    };
   }, [logoLoading]);
 
   // Prevent flashing before logo settings are evaluated

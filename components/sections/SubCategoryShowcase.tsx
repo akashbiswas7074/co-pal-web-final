@@ -58,7 +58,7 @@ const SubCategoryShowcase: React.FC<SubCategoryShowcaseProps> = ({ subCategories
   }
 
   return (
-    <section className=" mx-auto py-8 sm:py-10 relative px-4 sm:px-6 lg:px-8 w-[90%]">
+    <section className=" mx-auto py-16 md:py-20 relative px-4 sm:px-6 lg:px-8 w-[90%]">
       <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
@@ -71,7 +71,7 @@ const SubCategoryShowcase: React.FC<SubCategoryShowcaseProps> = ({ subCategories
         </div>
 
         <div className="relative">
-            <div className="embla" ref={emblaRef}>
+            <div className="embla overflow-hidden" ref={emblaRef}>
                 <div className="embla__container flex -ml-8">
                   {subCategories.map((subCategory) => {
                     const imageUrl = subCategory.images?.[0]?.url || '/placeholder-image.png';

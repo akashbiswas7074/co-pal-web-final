@@ -79,7 +79,7 @@ const ShopByCategories = ({ categories }: ShopByCategoriesProps) => {
     const showNavigation = categories.length > 3;
 
     return (
-        <section className="py-20 bg-white overflow-hidden">
+        <section className=" mx-auto py-16 md:py-20 relative px-4 sm:px-6 lg:px-8 w-[90%]">
             <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-16">
                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
@@ -92,7 +92,7 @@ const ShopByCategories = ({ categories }: ShopByCategoriesProps) => {
                 </div>
 
                 <div className="relative">
-                    <div className="embla" ref={emblaRef}>
+                    <div className="embla overflow-hidden" ref={emblaRef}>
                         <div className="embla__container flex -ml-8">
                             {categories.map((category) => (
                                 <div
@@ -105,32 +105,30 @@ const ShopByCategories = ({ categories }: ShopByCategoriesProps) => {
                         </div>
                     </div>
 
-                    {showNavigation && (
-                        <div className="flex justify-center items-center gap-4 mt-12">
-                            <button
-                                onClick={scrollPrev}
-                                disabled={!prevBtnEnabled}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-100 ${prevBtnEnabled
-                                        ? "bg-gray-100 text-black hover:bg-gray-200"
-                                        : "bg-gray-50 text-gray-300 cursor-not-allowed"
-                                    }`}
-                                aria-label="Previous categories"
-                            >
-                                <ChevronLeft size={24} />
-                            </button>
-                            <button
-                                onClick={scrollNext}
-                                disabled={!nextBtnEnabled}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${nextBtnEnabled
-                                        ? "bg-black text-white hover:bg-gray-800 shadow-lg"
-                                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                    }`}
-                                aria-label="Next categories"
-                            >
-                                <ChevronRight size={24} />
-                            </button>
-                        </div>
-                    )}
+                    <div className="flex justify-center items-center gap-4 mt-12">
+                        <button
+                            onClick={scrollPrev}
+                            disabled={!prevBtnEnabled}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-100 ${prevBtnEnabled
+                                    ? "bg-gray-100 text-black hover:bg-gray-200"
+                                    : "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                }`}
+                            aria-label="Previous categories"
+                        >
+                            <ChevronLeft size={24} />
+                        </button>
+                        <button
+                            onClick={scrollNext}
+                            disabled={!nextBtnEnabled}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${nextBtnEnabled
+                                    ? "bg-black text-white hover:bg-gray-800 shadow-lg"
+                                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                }`}
+                            aria-label="Next categories"
+                        >
+                            <ChevronRight size={24} />
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
