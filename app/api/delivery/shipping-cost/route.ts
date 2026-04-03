@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { qualifiesForFreeShipping } from '@/lib/utils/shipping';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,8 +9,24 @@ export async function POST(request: NextRequest) {
       originPincode, 
       weight, 
       paymentMode,
+      totalValue,
       shippingService = 'E' // E for Express, S for Surface
     } = body;
+
+    // Check for free shipping first if totalValue is provided
+    if (totalValue !== undefined) {
+      const isFree = await qualifiesForFreeShipping(Number(totalValue));
+      if (isFree) {
+        return NextResponse.json({
+          success: true,
+          cost: 0,
+          service: shippingService,
+          paymentMode,
+          isFreeShipping: true,
+          message: 'Order qualifies for Free Shipping'
+        });
+      }
+    }
 
     // Validate required fields
     if (!destinationPincode || !originPincode) {
@@ -61,7 +78,22 @@ export async function POST(request: NextRequest) {
     const apiUrl = `${baseUrl}/api/kinko/v1/invoice/charges/.json`;
     
     // Calculate weight in grams (default 500g if not provided)
-    const weightInGrams = weight || 500;
+    let weightInGrams = Number(weight) || 500;
+
+    // SERVER-SIDE SAFETY:
+    // If weight is massive (e.g. > 100kg), it's almost certainly an error in B2C context.
+    // We'll normalize weights between 50g and 50000g (50kg).
+    if (weightInGrams > 100000) {
+      console.warn(`[ShippingAPI] Massive weight detected: ${weightInGrams}g. Normalizing for estimation...`);
+      // If it looks like grams entered as mg or something else, we cap it.
+      // For now, let's just cap at 70kg which is a standard max for many express couriers.
+      weightInGrams = 70000; 
+    } else if (weightInGrams > 5000 && weightInGrams % 100 === 0) {
+      // Heuristic: If weight is e.g. 500, 1000, 5000 and it's large, 
+      // but entered in a kg field correctly it should be 0.5, 1, 5.
+      // No change needed here if the client already normalized.
+    }
+
     
     // Build query parameters
     const params = new URLSearchParams({

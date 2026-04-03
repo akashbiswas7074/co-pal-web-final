@@ -1,4 +1,4 @@
-import { CheckCircle, Truck, AlertCircle } from 'lucide-react';
+import { CheckCircle, Truck, AlertCircle, Star } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ShippingInfoProps {
@@ -39,7 +39,7 @@ export default function ShippingInfo({
           </div>
         )}
         
-        {!isCalculating && !error && shippingCost > 0 && (
+        {!isCalculating && !error && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-green-600">
               <CheckCircle className="w-4 h-4" />
@@ -61,38 +61,32 @@ export default function ShippingInfo({
               
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Shipping Charge:</span>
-                <span className="text-lg font-bold text-green-600">
-                  ₹{shippingCost.toFixed(2)}
-                  {paymentMethod === 'cod' && (
+                <span className={`text-lg font-bold ${shippingCost === 0 ? 'text-blue-600' : 'text-green-600'}`}>
+                  {shippingCost === 0 ? '₹ 0.00 (Free)' : `₹${shippingCost.toFixed(2)}`}
+                  {paymentMethod === 'cod' && shippingCost > 0 && (
                     <span className="text-xs text-muted-foreground ml-1">(incl. COD charges)</span>
                   )}
                 </span>
               </div>
             </div>
             
-            <div className="text-xs text-gray-500 mt-2">
-              * Shipping charges vary based on destination, package weight, and payment method
-              {paymentMethod === 'cod' && (
-                <span className="block mt-1 text-amber-600">
-                  COD orders may have additional charges compared to prepaid orders
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {!isCalculating && !error && shippingCost === 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-amber-600">
-              <AlertCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">Unable to calculate shipping</span>
-            </div>
-            
-            <div className="bg-amber-50 p-3 rounded-md">
-              <div className="text-sm text-amber-700">
-                Please ensure the delivery address is correct and try again.
+            {shippingCost > 0 && (
+              <div className="text-xs text-gray-500 mt-2">
+                * Shipping charges vary based on destination, package weight, and payment method
+                {paymentMethod === 'cod' && (
+                  <span className="block mt-1 text-amber-600">
+                    COD orders may have additional charges compared to prepaid orders
+                  </span>
+                )}
               </div>
-            </div>
+            )}
+            
+            {shippingCost === 0 && (
+              <div className="text-xs text-blue-600 font-medium mt-2 flex items-center gap-1">
+                <Star className="w-3 h-3 fill-blue-600" />
+                Your order qualifies for Free Shipping!
+              </div>
+            )}
           </div>
         )}
       </CardContent>

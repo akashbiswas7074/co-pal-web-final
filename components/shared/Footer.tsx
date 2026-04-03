@@ -243,7 +243,7 @@ const CompanyInfoSection = () => {
 };
 
 // Footer links section
-const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'; title: string }) => {
+const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help' | 'policy'; title: string }) => {
   const { footer, isLoading } = useWebsiteFooter();
   const { settings } = useFooterSettings();
 
@@ -278,6 +278,15 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
         { title: "Find a Store", url: "#" },
         { title: "Legal & Privacy", url: "#" },
         { title: "Gift Card", url: "#" }
+      ];
+      break;
+    case 'policy':
+      links = footer?.policyLinks || [
+        { title: "Privacy Policy", url: "/privacy-policy" },
+        { title: "Cookie Policy", url: "/cookie-policy" },
+        { title: "Returns & Cancellations", url: "/returns-and-cancellations" },
+        { title: "Shipping & Delivery", url: "/shipping-and-delivery" },
+        { title: "Terms & Conditions", url: "/terms-and-conditions" }
       ];
       break;
     default:
@@ -405,7 +414,7 @@ export default function Footer() {
         padding: '56px 24px 32px',
         transition: 'all 0.4s ease'
       }}>
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           <Suspense fallback={<LogoSkeleton />}>
             <CompanyInfoSection />
           </Suspense>
@@ -420,6 +429,10 @@ export default function Footer() {
 
           <Suspense fallback={<LinksSkeleton title="HELP" />}>
             <FooterLinksSection type="help" title="HELP" />
+          </Suspense>
+
+          <Suspense fallback={<LinksSkeleton title="POLICIES" />}>
+            <FooterLinksSection type="policy" title="POLICIES" />
           </Suspense>
 
           {/* Secure Payments info (replaces old subscribe column) */}

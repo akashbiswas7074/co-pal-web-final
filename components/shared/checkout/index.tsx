@@ -514,10 +514,21 @@ export default function CheckoutComponent() {
 
         if (productData && productData.shippingDimensions) {
           try {
-            // Calculate chargeable weight (max of volumetric vs dead weight) in kg
-            const chargeableWeightKg = calculateChargeableWeight(productData.shippingDimensions);
+            // WEIGHT SAFETY CHECK: 
+            // If the admin enters 500 in a "KG" field, they likely meant 500g.
+            // If they enter 0.5, they definitely meant 0.5kg.
+            // Assuming anything over 50kg for a single item is likely an input error in grams.
+            let rawWeight = Number(productData.shippingDimensions.weight) || 0;
+            let normalizedWeightKg = rawWeight > 50 ? rawWeight / 1000 : rawWeight;
 
-            // Convert to grams
+            // Calculate chargeable weight (max of volumetric vs dead weight) in kg
+            // We pass the normalized weight to the calculator
+            const chargeableWeightKg = calculateChargeableWeight({
+              ...productData.shippingDimensions,
+              weight: normalizedWeightKg
+            });
+
+            // Convert back to grams for the API
             if (chargeableWeightKg > 0) {
               itemWeightGrams = Math.round(chargeableWeightKg * 1000);
             }
@@ -525,13 +536,18 @@ export default function CheckoutComponent() {
             console.warn("Error calculating weight for item:", item.name, e);
           }
         } else if (item.weight) {
-          // Fallback to item.weight if available (mostly for legacy data)
-          itemWeightGrams = Math.round(Number(item.weight) * 1000);
+          // Fallback legacy weight detection
+          let rawWeight = Number(item.weight) || 0;
+          itemWeightGrams = rawWeight > 50 ? rawWeight : Math.round(rawWeight * 1000);
         }
 
-        console.log(`[Checkout] Item: ${item.name}, Weight/Item: ${itemWeightGrams}g, Qty: ${quantity}`);
         return acc + (quantity * itemWeightGrams);
       }, 0);
+
+      // Final safety cap: Delhivery Kinko usually handles small parcels (< 30kg) better
+      // If weight exceeds 100kg for a single consumer order, it's likely still an error or B2B
+      const safeWeightGrams = Math.min(totalWeight, 100000); // Cap at 100kg for estimation
+
 
       // Use the payment method to determine shipping calculation
       const currentPaymentMode = paymentMode || paymentMethod;
@@ -542,8 +558,9 @@ export default function CheckoutComponent() {
       // Use the new Delhivery shipping cost API
       const result = await calculateDelhiveryShipping(
         selectedAddress.zipCode,
-        totalWeight,
-        shippingPaymentMode
+        safeWeightGrams,
+        shippingPaymentMode,
+        subTotal
       );
 
       if (result.error) {
@@ -585,7 +602,11 @@ export default function CheckoutComponent() {
   const displayShipping = (() => {
     if (isCalculatingShipping) return "Calculating...";
     if (shippingError) return <span className="text-red-500 text-xs">{shippingError}</span>;
-    if (shippingCost === 0) return "Select address to calculate";
+    if (shippingCost === 0) {
+      // If we have an address but cost is 0, it's free shipping
+      if (address && address.zipCode) return "₹0.00 (Free)";
+      return "Select address to calculate";
+    }
     return `₹${shippingCost.toFixed(2)}`;
   })();
 
@@ -620,7 +641,7 @@ export default function CheckoutComponent() {
     cartItems.length === 0 || // Prevent order with empty cart
     !!checkoutError || // Disable if there's a persistent error
     isCalculatingShipping || // Disable while calculating shipping
-    (shippingCost === 0 && !shippingError); // Disable if shipping calculation returned 0 (unless it's an error)
+    !!shippingError; // Disable if shipping calculation failed
 
   const placeOrderButtonText = () => {
     if (placeOrderLoading) return "Processing...";
@@ -629,7 +650,6 @@ export default function CheckoutComponent() {
     if (!address) return "Select Delivery Address";
     if (cartItems.length === 0) return "Cart is Empty";
     if (isCalculatingShipping) return "Calculating Shipping...";
-    if (shippingCost === 0 && !shippingError) return "Unable to Calculate Shipping";
     if (shippingError) return "Shipping Calculation Failed";
     if (!paymentMethod) return "Select Payment Method";
     if (paymentMethod === "cod") return "Place Order (COD)";
@@ -822,7 +842,16 @@ export default function CheckoutComponent() {
             router.push(`/order/${orderId}?status=cod_success`);
           }
         } else if (paymentMethod === 'razorpay') {
-          // Ensure all expected Razorpay details are present from the backend
+          // Handle Payment Bypass (for testing/development)
+          if (response.bypassed) {
+            console.log("[placeOrderHandler] Order bypassed payment. Redirecting to success...");
+            toast.success("Order placed successfully (Bypassed)!");
+            emptyCart();
+            router.push(`/order/${orderId}?status=razorpay_success&bypassed=true`);
+            return;
+          }
+
+          // Ensure all expected Razorpay details are present from the backend for real payments
           if (response.razorpayOrderId && response.amount && response.razorpayKey && response.currency) {
             console.log("[placeOrderHandler] Razorpay details received. Initiating payment...");
 

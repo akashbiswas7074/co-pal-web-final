@@ -65,7 +65,8 @@ export function CheckoutSummary({ cart, shippingAddress }: CheckoutSummaryProps)
         const result = await calculateDelhiveryShipping(
           shippingAddress.pincode,
           totalWeight,
-          'Pre-paid' // Default payment mode
+          'Pre-paid', // Default payment mode
+          cart.total
         );
 
         if (result.error) {

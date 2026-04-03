@@ -46,23 +46,40 @@ export const getAllWebsiteSettings = async () => {
 };
 
 // Create or update website settings
-export const createOrUpdateWebsiteSettings = async (data: Partial<IWebsiteSettings>) => {
+export const createOrUpdateWebsiteSettings = async (data: Partial<IWebsiteSettings> & { _id?: string }) => {
   try {
     await connectToDatabase();
     
-    // First, deactivate all existing settings
-    await WebsiteSettings.updateMany({}, { isActive: false });
-    
-    // Create new settings or update existing one
-    const settings = await WebsiteSettings.findOneAndUpdate(
-      { isActive: true },
-      { ...data, isActive: true },
-      { 
-        new: true, 
-        upsert: true,
-        runValidators: true
-      }
-    );
+    let settings;
+    const { _id, ...updateData } = data;
+
+    if (_id) {
+      // Update specific record and ensure it's active
+      settings = await WebsiteSettings.findByIdAndUpdate(
+        _id,
+        { ...updateData, isActive: true },
+        { new: true, runValidators: true }
+      );
+    } else {
+      // Find active and update, or create new if none active
+      settings = await WebsiteSettings.findOneAndUpdate(
+        { isActive: true },
+        { ...updateData, isActive: true },
+        { 
+          new: true, 
+          upsert: true,
+          runValidators: true
+        }
+      );
+    }
+
+    if (settings && settings.isActive) {
+      // Deactivate all OTHER settings once we have a successfully saved active setting
+      await WebsiteSettings.updateMany(
+        { _id: { $ne: settings._id } }, 
+        { isActive: false }
+      );
+    }
     
     return {
       success: true,

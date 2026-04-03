@@ -29,8 +29,17 @@ const sampleSchema = new mongoose.Schema(
     },
     variant: {
       type: String,
-      enum: ["5ml", "10ml", "custom"],
       default: "5ml",
+    },
+    value: {
+      type: Number,
+    },
+    unit: {
+      type: String,
+    },
+    publicId: {
+      type: String,
+      default: "",
     },
   },
   {

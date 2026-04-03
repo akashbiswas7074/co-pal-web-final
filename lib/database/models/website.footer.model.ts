@@ -28,6 +28,10 @@ export interface IWebsiteFooter {
     title: string;
     url: string;
   }>;
+  policyLinks: Array<{
+    title: string;
+    url: string;
+  }>;
   copyrightText: string;
   isActive: boolean;
   showFooterName: boolean;
@@ -81,6 +85,12 @@ const WebsiteFooterSchema = new Schema<IWebsiteFooter>(
         url: String,
       },
     ],
+    policyLinks: [
+      {
+        title: String,
+        url: String,
+      },
+    ],
     copyrightText: {
       type: String,
       required: [true, "Copyright text is required"],
@@ -116,14 +126,26 @@ const WebsiteFooter =
   mongoose.models.WebsiteFooter ||
   mongoose.model<IWebsiteFooter>("WebsiteFooter", WebsiteFooterSchema);
 
-// Ensure the schema has showFooterName if it was missing from a cached model
-if (WebsiteFooter.schema && !WebsiteFooter.schema.paths.showFooterName) {
-  WebsiteFooter.schema.add({
-    showFooterName: {
-      type: Boolean,
-      default: true,
-    },
-  });
+// Ensure the schema has showFooterName or policyLinks if they were missing from a cached model
+if (WebsiteFooter.schema) {
+  if (!WebsiteFooter.schema.paths.showFooterName) {
+    WebsiteFooter.schema.add({
+      showFooterName: {
+        type: Boolean,
+        default: true,
+      },
+    });
+  }
+  if (!WebsiteFooter.schema.paths.policyLinks) {
+    WebsiteFooter.schema.add({
+      policyLinks: [
+        {
+          title: String,
+          url: String,
+        },
+      ],
+    });
+  }
 }
 
 export default WebsiteFooter;

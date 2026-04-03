@@ -66,6 +66,15 @@ export interface IWebsiteSettings extends Document {
   // Theme Settings
   themeSettings?: IThemeSettings;
   
+  // Shipping Configuration
+  freeShippingThreshold?: number;
+  
+  // Payment Configuration
+  razorpayKeyId?: string;
+  razorpayKeySecret?: string;
+  razorpayWebhookSecret?: string;
+  bypassPayment: boolean;
+  
   // Status
   isActive: boolean;
   
@@ -240,6 +249,30 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>({
     default: () => ({})
   },
   
+  // Shipping Configuration
+  freeShippingThreshold: {
+    type: Number,
+    default: 0
+  },
+  
+  // Payment Configuration
+  razorpayKeyId: {
+    type: String,
+    trim: true
+  },
+  razorpayKeySecret: {
+    type: String,
+    trim: true
+  },
+  razorpayWebhookSecret: {
+    type: String,
+    trim: true
+  },
+  bypassPayment: {
+    type: Boolean,
+    default: false
+  },
+  
   // Status
   isActive: {
     type: Boolean,
@@ -252,6 +285,14 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>({
 // Indexes for better performance
 WebsiteSettingsSchema.index({ isActive: 1 });
 WebsiteSettingsSchema.index({ createdAt: -1 });
+
+// Force re-registration of the model if it exists but is missing new schema paths (useful for development)
+if (mongoose.models.WebsiteSettings) {
+  const schema = (mongoose.models.WebsiteSettings as any).schema;
+  if (!schema.path('freeShippingThreshold') || !schema.path('razorpayKeyId') || !schema.path('bypassPayment')) {
+    delete (mongoose.models as any).WebsiteSettings;
+  }
+}
 
 const WebsiteSettings = mongoose.models.WebsiteSettings || mongoose.model<IWebsiteSettings>('WebsiteSettings', WebsiteSettingsSchema);
 

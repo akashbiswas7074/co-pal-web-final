@@ -14,10 +14,10 @@ const Preloader: React.FC = () => {
     if (logoLoading) return; // Don't start timer until logo is loaded
 
     // Hide preloader after a fixed duration to allow path animation to finish
-    // We add 5.5s so everything fits nicely.
+    // Reduced from 5.5s to 3s for a snappier experience
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 5500); 
+    }, 3000); 
 
     return () => clearTimeout(timer);
   }, [logoLoading]);
@@ -64,13 +64,13 @@ const Preloader: React.FC = () => {
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: "240px" }}
-            transition={{ duration: 4.5, ease: "easeInOut" }}
+            transition={{ duration: 2.5, ease: "easeInOut" }}
             className="absolute bottom-24 h-[1px] bg-white/20 overflow-hidden"
           >
             <motion.div 
                initial={{ x: "-100%" }}
                animate={{ x: "0%" }}
-               transition={{ duration: 4.5, ease: "easeInOut" }}
+               transition={{ duration: 2.5, ease: "easeInOut" }}
                className="w-full h-full bg-white"
             />
           </motion.div>

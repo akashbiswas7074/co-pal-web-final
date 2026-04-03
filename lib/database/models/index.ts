@@ -4,31 +4,50 @@
 // in a predictable order by importing them. This is particularly important
 // in environments like Next.js with hot-reloading and serverless functions.
 
-// Import base models first (those with fewer or no dependencies on other models in this list)
+// Import base models first
 import './user.model';
 import './category.model';
-import './subCategory.model'; // Critical for the current error
+import './subCategory.model';
 import './color.model';
 import './size.model';
+import './tag.model';
 import './vendor.model';
-import './faq.model'; // Added FAQ model
+import './faq.model';
 
-// Import models that might depend on the base models above
-import './product.model'; // Depends on User, Category, SubCategory
-
-// Import remaining models. Their order might need adjustment if they have strict interdependencies.
+// Import remaining models
 import './banner.model';
+import './blog.model';
 import './cart.model';
-import './collection-highlight.model'; // Added CollectionHighlight model
+import './category-section.model';
+import './category-size-guide.model';
+import './collection-highlight.model';
 import './coupon.model';
+import './dynamic-page.model';
+import './featured-review.model';
 import './featured.video.model';
-import './home.screen.offers'; // As listed in file search
+import './footer.settings.model';
+import './hero-section.model';
+import './home.screen.offers.ts';
+import './influencer-spotlight.model';
+import './navbar-link.model';
+import './navbar.settings.model';
 import './order.model';
 import './pending-cod-order.model';
-import './topbar.model';
-import './wishlist.model';
-import './sample.model';
+import './preloader.settings.model';
+import './product.model';
+import './return-policy.model';
 import './sample-settings.model';
+import './sample.model';
+import './shipping-returns.model';
+import './size-guide.model';
+import './stats-ticker.model';
+import './topbar.model';
+import './website.footer.model';
+import './website.logo.model';
+import './website.section.model';
+import './website.settings.model';
+import './wishlist.model';
+import './custom-page.model';
 
 // Optional: Re-export models if you prefer importing them via this index file.
 // e.g., export { default as User } from './user.model';

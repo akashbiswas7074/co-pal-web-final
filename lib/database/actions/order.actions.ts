@@ -14,6 +14,8 @@ import { sendCodVerificationEmail, sendOrderConfirmationEmail } from '@/lib/emai
 import bcrypt from 'bcryptjs'; // Added for hashing COD verification codes
 import { mapAdminStatusToWebsite } from "@/lib/order-status-utils";
 import { calculateShippingCharge, calculateShippingForOrder } from '@/lib/utils/shipping';
+import { verifyGSTIN, calculateGSTBreakdown } from '../../utils/gst-service';
+import { getActiveWebsiteSettings } from "./website.settings.actions";
 
 // Define the expected structure for checkout data
 interface CheckoutData {
@@ -60,6 +62,10 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
   await connectToDatabase();
   const session = await mongoose.startSession();
   session.startTransaction();
+
+  // Fetch active website settings for payment configuration
+  const settingsResult = await getActiveWebsiteSettings();
+  const settings = settingsResult.success ? settingsResult.settings : null;
   let savedOrder: any = null;
   let savedPendingOrder: any = null;
   let plainVerificationCode: string | undefined; // Fix: declare at top for COD flow
@@ -89,32 +95,34 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
     let igst = 0;
     let calculatedTaxPrice = 0;
 
-    // If gstInfo is provided, we calculate the breakdown and add to total 
-    // OR extract from itemsPrice. Let's assume we add it on top for business orders 
-    // if the user says "add gst".
-    // Always calculate tax breakdown since GST is now mandatory
-    if (taxPrice > 0 || calculatedTaxPrice > 0) {
-      const totalTax = taxPrice || calculatedTaxPrice;
-
-      const shippingState = shippingAddress.state?.trim();
-      // Case-insensitive check for business state
-      const isIntraState = shippingState &&
-        (shippingState.toLowerCase() === BUSINESS_STATE.toLowerCase());
-
-      if (isIntraState) {
-        cgst = totalTax / 2;
-        sgst = totalTax / 2;
-        igst = 0;
+    // If gstInfo is provided, verify it first
+    let verifiedGstInfo = gstInfo;
+    if (gstInfo?.gstin) {
+      console.log(`[processCheckoutSteps] Verifying GSTIN: ${gstInfo.gstin}`);
+      const verificationResponse = await verifyGSTIN(gstInfo.gstin);
+      if (verificationResponse.success) {
+        verifiedGstInfo = {
+          gstin: verificationResponse.data.gstin,
+          businessName: verificationResponse.data.lgnm || verificationResponse.data.tradeName || gstInfo.businessName,
+          businessAddress: verificationResponse.data.address || gstInfo.businessAddress,
+        };
+        console.log(`[processCheckoutSteps] GSTIN Verified for: ${verifiedGstInfo.businessName}`);
       } else {
-        cgst = 0;
-        sgst = 0;
-        igst = totalTax;
+        console.warn(`[processCheckoutSteps] GSTIN Verification failed: ${verificationResponse.message}`);
+        // Optionally fail checkout if the GSTIN is explicitly invalid
+        // return { success: false, message: `Invalid GSTIN: ${verificationResponse.message}` };
       }
-      // Keep existing logic for specific business details if provided
-      // (gstInfo is already extracted from data)
     }
 
-    const finalTaxPrice = taxPrice || calculatedTaxPrice;
+    // Use automated tax breakdown logic for consistency
+    const stateCode = shippingAddress.state?.substring(0, 2) || (process.env.GST_STATE_CD || '27');
+    const taxBreakdown = calculateGSTBreakdown(itemsPrice, stateCode);
+    
+    // Override taxes with calculated values if taxPrice is provided (or if we want to automate it)
+    const finalTaxPrice = taxPrice > 0 ? taxPrice : taxBreakdown.totalTax;
+    cgst = taxBreakdown.cgst;
+    sgst = taxBreakdown.sgst;
+    igst = taxBreakdown.igst;
 
     // Use provided shipping price if available (as frontend has more accurate weight calculation)
     // Otherwise calculate dynamically
@@ -386,7 +394,7 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
       paymentMethod: paymentMethod,
       couponApplied: couponCode || undefined,
       discountAmount: discountAmount || 0,
-      gstInfo: gstInfo,
+      gstInfo: verifiedGstInfo,
       cgst: cgst,
       sgst: sgst,
       igst: igst,
@@ -436,7 +444,7 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
         codVerificationCodeExpires: new Date(Date.now() + codeExpiresInMinutes * 60 * 1000),
         couponApplied: couponCode || undefined,
         discountAmount: discountAmount || 0,
-        gstInfo: gstInfo,
+        gstInfo: verifiedGstInfo,
         cgst: cgst,
         sgst: sgst,
         igst: igst,
@@ -555,10 +563,40 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
     // Handle payment method specific logic
     if (paymentMethod === 'razorpay' && savedOrder) {
       console.log("[processCheckoutSteps] Razorpay payment selected. Order status: Pending Payment. Creating Razorpay order...");
+
+      // Check for Payment Bypass (for testing/development)
+      if (settings?.bypassPayment) {
+        console.log("[processCheckoutSteps] Payment Bypass enabled. Mocking success...");
+        
+        // Update the order document directly within the session for consistency
+        savedOrder.status = 'Processing';
+        savedOrder.isPaid = true;
+        savedOrder.paymentStatus = 'paid';
+        savedOrder.paidAt = new Date();
+        savedOrder.paymentResult = {
+          id: 'bypass_' + Date.now(),
+          status: 'captured',
+          email: user?.email || 'bypassed@example.com'
+        };
+
+        await savedOrder.save({ session });
+        await session.commitTransaction();
+        console.log("[processCheckoutSteps] Transaction committed for bypassed order.");
+        return {
+          success: true,
+          message: "Order placed successfully (Payment Bypassed)",
+          orderId: savedOrder._id.toString(),
+          bypassed: true
+        };
+      }
+
       const Razorpay = (await import("razorpay")).default;
+      const rzpKeyId = settings?.razorpayKeyId || process.env.RAZORPAY_KEY_ID;
+      const rzpKeySecret = settings?.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET;
+
       const razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID!,
-        key_secret: process.env.RAZORPAY_KEY_SECRET!
+        key_id: rzpKeyId!,
+        key_secret: rzpKeySecret!
       });
       const rzrOrder = await razorpay.orders.create({
         amount: Math.round(finalTotalPrice * 100), // Use finalTotalPrice instead of totalPrice
@@ -574,7 +612,7 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
         message: "Order created, proceed to Razorpay payment.",
         orderId: savedOrder._id.toString(),
         razorpayOrderId: rzrOrder.id,
-        razorpayKey: process.env.RAZORPAY_KEY_ID,
+        razorpayKey: rzpKeyId,
         amount: rzrOrder.amount, // This is amount in paise
         currency: rzrOrder.currency
       };

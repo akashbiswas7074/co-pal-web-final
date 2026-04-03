@@ -30,6 +30,10 @@ export interface WebsiteFooter {
     title: string;
     url: string;
   }>;
+  policyLinks?: Array<{
+    title: string;
+    url: string;
+  }>;
   copyrightText?: string;
   showFooterName?: boolean;
   isActive?: boolean;

@@ -1377,23 +1377,18 @@ const ProductPage = () => {
                   )}
                 </div>
 
-                <div className="bg-[#f8f8f8] p-4 border-l-4 border-black mb-6">
-                  <p className="text-[13px] font-bold uppercase tracking-tight text-gray-900 mb-1">
-                    Complimentary Sample With Every Order
-                  </p>
-                  <p className="text-[11px] text-gray-500 uppercase tracking-widest">
-                    Limited Time Offer · Handcrafted Excellence
-                  </p>
-                </div>
+                {sampleData && sampleData.length > 0 && (
+                  <div className="bg-[#f8f8f8] p-4 border-l-4 border-black mb-6">
+                    <p className="text-[13px] font-bold uppercase tracking-tight text-gray-900 mb-1">
+                      Complimentary Sample With Every Order
+                    </p>
+                    <p className="text-[11px] text-gray-500 uppercase tracking-widest">
+                      Limited Time Offer · Handcrafted Excellence
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Urgency Widget */}
-              <div className="flex items-center gap-3 py-4 border-y border-gray-100 mb-6">
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                <p className="text-[13px] font-medium text-gray-700">
-                  <span className="font-bold">24 people</span> are viewing this right now
-                </p>
-              </div>
 
               {/* Add PincodeServiceability component before the size selection */}
               <div className="mt-4 sm:mt-6 mb-4 sm:mb-6">

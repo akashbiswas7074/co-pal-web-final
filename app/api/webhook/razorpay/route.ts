@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { handlePaymentSuccess } from '@/lib/database/actions/order.actions';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET!;
 
@@ -9,6 +10,10 @@ export async function POST(req: NextRequest) {
   console.log('[Webhook /api/webhook/razorpay] Received POST request');
 
   try {
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult.success ? settingsResult.settings : null;
+    const effectiveWebhookSecret = settings?.razorpayWebhookSecret || process.env.RAZORPAY_WEBHOOK_SECRET;
+
     const rawBody = await req.text(); // Razorpay sends JSON, read as text first for signature verification
     const signature = req.headers.get('x-razorpay-signature');
 
@@ -17,14 +22,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing Razorpay signature' }, { status: 400 });
     }
 
-    if (!webhookSecret) {
+    if (!effectiveWebhookSecret) {
         console.error('[Webhook /api/webhook/razorpay] Razorpay webhook secret is not configured.');
         return NextResponse.json({ success: false, message: 'Webhook secret not configured' }, { status: 500 });
     }
 
     // Verify the signature
     const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
+      .createHmac('sha256', effectiveWebhookSecret)
       .update(rawBody)
       .digest('hex');
 

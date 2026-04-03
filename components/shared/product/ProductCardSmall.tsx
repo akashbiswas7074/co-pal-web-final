@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getSamplesByProductId } from '@/lib/database/actions/sample.actions';
 import { SampleSelectionModal } from '@/components/shared/product/SampleSelectionModal';
+import { useEffect } from 'react';
 
 interface ProductProps {
   product: {
@@ -54,6 +55,7 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
   const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [samples, setSamples] = useState<any[]>([]);
   const [loadingSamples, setLoadingSamples] = useState(false);
+  const [hasSamples, setHasSamples] = useState(false);
 
   // Use wishlist context to check if this product is in the wishlist
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -70,6 +72,25 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
   // Ensure we have a valid product ID by checking all possible sources
   const productId = product.id || product._id || '';
   const isProductInWishlist = productId ? isInWishlist(productId) : false;
+
+  // Pre-check for samples availability
+  useEffect(() => {
+    const checkSamples = async () => {
+      if (!productId) return;
+      try {
+        const res = await getSamplesByProductId(productId);
+        if (res && res.length > 0) {
+          setSamples(res);
+          setHasSamples(true);
+        } else {
+          setHasSamples(false);
+        }
+      } catch (error) {
+        console.error("Error checking samples:", error);
+      }
+    };
+    checkSamples();
+  }, [productId]);
 
   const {
     id = product._id || '',
@@ -455,28 +476,15 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
     }
   };
 
-  const handleSampleClick = async (e: React.MouseEvent) => {
+  const handleSampleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (samples.length > 0) {
       setIsSampleModalOpen(true);
-      return;
-    }
-
-    setLoadingSamples(true);
-    try {
-      const res = await getSamplesByProductId(productId);
-      if (res && res.length > 0) {
-        setSamples(res);
-        setIsSampleModalOpen(true);
-      } else {
-        toast.error("No samples available for this product");
-      }
-    } catch (error) {
-      toast.error("Failed to fetch samples");
-    } finally {
-      setLoadingSamples(false);
+    } else {
+      toast.error("No samples available for this product");
+      setHasSamples(false);
     }
   };
 
@@ -658,19 +666,21 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
             </div>
           </button>
 
-          {/* Quick Add Sample Button */}
-          <div className={cn(
-            "absolute bottom-2 left-2 right-2 z-10 transition-all duration-300 transform",
-            isHovering ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          )}>
-            <Button
-              onClick={handleSampleClick}
-              disabled={loadingSamples}
-              className="w-full bg-black/80 backdrop-blur-md hover:bg-black text-white text-[10px] font-bold uppercase tracking-widest h-8 rounded-lg shadow-lg border-0"
-            >
-              {loadingSamples ? <Loader2 size={12} className="animate-spin" /> : "Get Sample"}
-            </Button>
-          </div>
+          {/* Quick Add Sample Button - Only visible if hasSamples is true */}
+          {hasSamples && (
+            <div className={cn(
+              "absolute bottom-2 left-2 right-2 z-10 transition-all duration-300 transform",
+              isHovering ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+            )}>
+              <Button
+                onClick={handleSampleClick}
+                disabled={loadingSamples}
+                className="w-full bg-black/80 backdrop-blur-md hover:bg-black text-white text-[10px] font-bold uppercase tracking-widest h-8 rounded-lg shadow-lg border-0"
+              >
+                {loadingSamples ? <Loader2 size={12} className="animate-spin" /> : "Get Sample"}
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className={cn(

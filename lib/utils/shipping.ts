@@ -1,4 +1,5 @@
 import { delhiveryApi } from './delivery-partner';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 // Shipping calculation utilities
 
@@ -80,7 +81,8 @@ export async function calculateDelhiveryShippingServer(
 export async function calculateDelhiveryShipping(
   destinationPincode: string,
   totalWeight?: number,
-  paymentMode: 'Pre-paid' | 'COD' = 'Pre-paid'
+  paymentMode: 'Pre-paid' | 'COD' = 'Pre-paid',
+  totalValue?: number
 ): Promise<{cost: number, error?: string}> {
   // Check if we're on the client side
   if (typeof window !== 'undefined') {
@@ -90,6 +92,7 @@ export async function calculateDelhiveryShipping(
         originPincode: SHIPPING_CONFIG.WAREHOUSE_PINCODE,
         weight: totalWeight || SHIPPING_CONFIG.DEFAULT_WEIGHT_GRAMS,
         paymentMode,
+        totalValue,
         shippingService: 'E' // Express service
       };
 
@@ -112,6 +115,10 @@ export async function calculateDelhiveryShipping(
         throw new Error(data.error || 'Failed to calculate shipping cost');
       }
 
+      if (data.cost === 0 && data.isFreeShipping) {
+        return { cost: 0 };
+      }
+
       if (!data.cost || data.cost <= 0) {
         throw new Error('Invalid shipping cost received from API');
       }
@@ -125,7 +132,7 @@ export async function calculateDelhiveryShipping(
   } else {
     // Server-side: convert payment mode and call server function
     const serverPaymentMode = paymentMode === 'Pre-paid' ? 'prepaid' : 'cod';
-    return calculateDelhiveryShippingServer(destinationPincode, totalWeight, undefined, serverPaymentMode);
+    return calculateDelhiveryShippingServer(destinationPincode, totalWeight, totalValue, serverPaymentMode);
   }
 }
 
@@ -140,13 +147,21 @@ export function calculateShippingCharge(itemsPrice: number): number {
 }
 
 /**
- * Check if order qualifies for free shipping (disabled)
+ * Check if order qualifies for free shipping based on active website settings
  * @param itemsPrice - Total price of items in the cart
- * @returns boolean indicating if shipping is free
+ * @returns Promise<boolean> indicating if shipping is free
  */
-export function qualifiesForFreeShipping(itemsPrice: number): boolean {
-  // Free shipping is disabled - always return false
-  return false;
+export async function qualifiesForFreeShipping(itemsPrice: number): Promise<boolean> {
+  try {
+    const { success, settings } = await getActiveWebsiteSettings();
+    if (success && settings && settings.freeShippingThreshold > 0) {
+      return itemsPrice >= settings.freeShippingThreshold;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error checking free shipping qualification:", error);
+    return false;
+  }
 }
 
 /**
@@ -159,13 +174,22 @@ export function getShippingDisplayText(shippingCost: number): string {
 }
 
 /**
- * Calculate how much more is needed for free shipping (disabled)
+ * Calculate how much more is needed for free shipping based on active settings
  * @param itemsPrice - Total price of items in the cart
- * @returns amount needed for free shipping (always 0 since free shipping is disabled)
+ * @returns Promise<number> amount needed for free shipping (0 if already free)
  */
-export function getAmountNeededForFreeShipping(itemsPrice: number): number {
-  // Free shipping is disabled
-  return 0;
+export async function getAmountNeededForFreeShipping(itemsPrice: number): Promise<number> {
+  try {
+    const { success, settings } = await getActiveWebsiteSettings();
+    if (success && settings && settings.freeShippingThreshold > 0) {
+      const remaining = settings.freeShippingThreshold - itemsPrice;
+      return Math.max(0, remaining);
+    }
+    return 0;
+  } catch (error) {
+    console.error("Error calculating amount for free shipping:", error);
+    return 0;
+  }
 }
 
 /**
@@ -181,8 +205,15 @@ export async function calculateShippingForOrder(
   paymentMethod: 'cod' | 'razorpay'
 ): Promise<number> {
   try {
-    // Calculate weight based on items price (this is a simplified calculation)
-    const estimatedWeight = Math.max(500, itemsPrice * 0.1); // Minimum 500g, or 0.1g per rupee
+    // Check for free shipping threshold first
+    const isFreeShipping = await qualifiesForFreeShipping(itemsPrice);
+    if (isFreeShipping) {
+      console.log(`[calculateShippingForOrder] Order qualified for Free Shipping (itemsPrice: ₹${itemsPrice})`);
+      return 0;
+    }
+
+    // Calculate weight based on items price
+    const estimatedWeight = Math.max(500, itemsPrice * 0.1); 
     
     // Use the correct payment mode for Delhivery API
     const apiPaymentMode = paymentMethod === 'cod' ? 'COD' : 'Pre-paid';
