@@ -2,7 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import { useSession } from "next-auth/react";
-import { Heart, Truck, ShieldCheck, RefreshCcw, ArrowRight, CheckCircle2, Package, Info, AlertCircle, ChevronDown, ChevronUp, Store, Mail, Phone, MapPin, Star } from "lucide-react";
+import { Heart, Truck, ShieldCheck, RefreshCcw, ArrowRight, CheckCircle2, Package, Info, AlertCircle, ChevronDown, ChevronUp, Store, Mail, Phone, MapPin, Star, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
@@ -186,6 +186,7 @@ const ProductPage = () => {
   const [selectedSample, setSelectedSample] = useState<any | null>(null);
   const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [isSampleSelected, setIsSampleSelected] = useState(false);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   // Zoom feature states
   const [isZooming, setIsZooming] = useState(false);
@@ -434,8 +435,8 @@ const ProductPage = () => {
         price: activeSample.price,
         slug: productData.slug,
         product: productData._id,
-        quantity: 1,
-        qty: 1,
+        quantity: selectedQuantity,
+        qty: selectedQuantity,
         originalPrice: activeSample.price,
         discount: 0,
         availableQty: 99,
@@ -509,8 +510,8 @@ const ProductPage = () => {
         image: (subProduct.images?.[0] ? (typeof subProduct.images[0] === 'string' ? subProduct.images[0] : subProduct.images[0].url) : undefined) || "/placeholder.png",
         price: finalPrice,
         slug: productData.slug,
-        quantity: 1,
-        qty: 1,
+        quantity: selectedQuantity,
+        qty: selectedQuantity,
         product: productData._id,
         originalPrice: originalPrice, // Ensure originalPrice is properly set
         discount: subProductDiscount,
@@ -567,8 +568,8 @@ const ProductPage = () => {
       size: selectedSizeInfo.size,
       slug: productData.slug,
       product: productData._id,
-      quantity: 1,
-      qty: 1,
+      quantity: selectedQuantity,
+      qty: selectedQuantity,
       originalPrice: sizeOriginalPrice,
       discount: subProductDiscount,
       availableQty: selectedSizeData.qty || 0,
@@ -1493,6 +1494,71 @@ const ProductPage = () => {
 
               {/* Add to Cart Actions */}
               <div className="flex flex-col gap-4 mb-8">
+                {/* Stock Status & Quantity */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold uppercase tracking-widest text-gray-900">Quantity</span>
+                  {(() => {
+                    let stockQty = 0;
+                    let isStockTracked = true;
+                    
+                    if (isSampleSelected) {
+                      isStockTracked = false;
+                    } else if (!hasValidSizes(p)) {
+                      stockQty = p.subProducts?.[0]?.qty || p.subProducts?.[0]?.stock || p.qty || p.stock || 0;
+                    } else if (selectedSizeData) {
+                      stockQty = selectedSizeData.qty || 0;
+                    } else {
+                      isStockTracked = false; 
+                    }
+                    
+                    if (!isStockTracked) return null;
+                    
+                    if (stockQty <= 0) {
+                      return <span className="text-[10px] font-bold uppercase tracking-widest text-red-600 bg-red-50 px-2 py-1">Out of Stock</span>;
+                    } else if (stockQty < 10) {
+                      return <span className="text-[10px] font-bold uppercase tracking-widest text-orange-600 bg-orange-50 px-2 py-1">Only {stockQty} Left</span>;
+                    } else {
+                      return <span className="text-[10px] font-bold uppercase tracking-widest text-green-600 bg-green-50 px-2 py-1">In Stock</span>;
+                    }
+                  })()}
+                </div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="flex w-full sm:w-auto items-center border border-gray-200 h-14 bg-white">
+                    <button 
+                      onClick={() => setSelectedQuantity(Math.max(1, selectedQuantity - 1))}
+                      className={cn("px-4 h-full flex items-center justify-center transition-colors", selectedQuantity <= 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-500 hover:text-black hover:bg-gray-50")}
+                      disabled={selectedQuantity <= 1}
+                    >
+                      <Minus size={16} strokeWidth={2.5} />
+                    </button>
+                    <div className="w-12 h-full flex items-center justify-center text-sm font-bold border-x border-gray-200">
+                      {selectedQuantity}
+                    </div>
+                    <button 
+                      onClick={() => {
+                        // Max quantity check based on stock
+                        let maxQty = 99;
+                        if (isSampleSelected) {
+                          maxQty = 99; // Samples generally don't have a strict stock limit per user
+                        } else if (!hasValidSizes(p)) {
+                          maxQty = p.subProducts?.[0]?.qty || p.subProducts?.[0]?.stock || p.qty || p.stock || 99;
+                        } else if (selectedSizeData) {
+                          maxQty = selectedSizeData.qty || 99;
+                        }
+                              
+                        if (selectedQuantity < maxQty) {
+                          setSelectedQuantity(selectedQuantity + 1);
+                        } else {
+                          toast.error(`Only ${maxQty} items available in stock`);
+                        }
+                      }}
+                      className="px-4 h-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Plus size={16} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                </div>
+
                 <Button
                   size="lg"
                   className={cn(

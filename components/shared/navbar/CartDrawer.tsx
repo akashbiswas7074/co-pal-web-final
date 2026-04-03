@@ -74,7 +74,7 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <SheetContent className="sm:max-w-md w-full flex flex-col z-[100] bg-white p-0 border-l border-gray-100">
+      <SheetContent className="sm:max-w-md w-full flex flex-col z-[100] bg-white p-0 border-l border-gray-100 [&>button]:hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <SheetTitle className="text-[14px] font-bold uppercase tracking-[0.2em] text-gray-900">
