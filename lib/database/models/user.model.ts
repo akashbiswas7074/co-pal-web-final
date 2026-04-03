@@ -11,6 +11,7 @@ export interface IUser extends Document {
   role: string;
   image?: string;
   provider: 'credentials' | 'google' | 'phone' | string; // Added 'phone' as a provider
+  providerAccountId?: string; // Unique ID from the OAuth provider (e.g., Google sub)
   emailVerified?: Date | null;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -81,6 +82,7 @@ const UserSchema = new Schema<IUser>( // Use the interface
     role: { type: String, default: "user" },
     image: { type: String },
     provider: { type: String, default: "credentials", enum: ["credentials", "google", "phone"] }, // Added "phone" to enum
+    providerAccountId: { type: String, index: true }, // Store the unique ID from provider
     emailVerified: { type: Date, default: null },
 
     // Password Reset Fields

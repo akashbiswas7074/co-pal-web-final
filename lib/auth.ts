@@ -62,6 +62,33 @@ const customMongooseAdapter = (): Adapter => {
         }
       }
       
+      // FAILSOUND: Check if user with this email already exists to avoid duplicate key errors
+      const existingUser = await User.findOne({ email: data.email });
+      if (existingUser) {
+        console.log(`[Auth] User with email ${data.email} already exists. Linking account instead of creating.`);
+        
+        let isModified = false;
+        if (!existingUser.providerAccountId && data.providerAccountId) {
+          existingUser.providerAccountId = data.providerAccountId;
+          isModified = true;
+        }
+        if (!existingUser.image && data.image) {
+          existingUser.image = data.image;
+          isModified = true;
+        }
+        if (isModified) {
+          await existingUser.save();
+        }
+        
+        return {
+          id: existingUser._id.toString(),
+          email: existingUser.email,
+          emailVerified: existingUser.emailVerified,
+          name: `${existingUser.firstName} ${existingUser.lastName}`.trim(),
+          image: existingUser.image
+        };
+      }
+      
       // Ensure emailVerified is set for Google users
       if (data.provider === 'google' && !data.emailVerified) {
         data.emailVerified = new Date();
@@ -75,6 +102,7 @@ const customMongooseAdapter = (): Adapter => {
         image: data.image,
         username: data.username || data.email?.split('@')[0],
         provider: data.provider,
+        providerAccountId: data.providerAccountId,
         emailVerified: data.emailVerified,
         role: data.role || 'user'
       });
@@ -118,9 +146,8 @@ const customMongooseAdapter = (): Adapter => {
     
     async getUserByAccount({ providerAccountId, provider }) {
       await connectToDatabase();
-      // For simplicity, we'll find by email since we don't have separate account linking
-      // In a full implementation, you'd have a separate accounts collection
-      const user = await User.findOne({ provider });
+      // For uniqueness, we now find by BOTH provider and account ID
+      const user = await User.findOne({ provider, providerAccountId });
       if (!user) return null;
       
       return {
@@ -202,6 +229,7 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      allowDangerousEmailAccountLinking: true, // Allow linking Google to existing email accounts
       profile(profile: GoogleProfile) {
         // Ensure provider is set in user object with additional fields
         return {
@@ -212,6 +240,7 @@ export const authOptions: NextAuthOptions = {
           firstName: profile.given_name,
           lastName: profile.family_name,
           provider: 'google', // Always explicitly set provider to 'google'
+          providerAccountId: profile.sub, // Store the unique Google ID
           emailVerified: new Date(), // Mark email as verified for Google users
           role: 'user', // Set default role for Google users
           updatedAt: new Date() // Set update date
@@ -219,7 +248,7 @@ export const authOptions: NextAuthOptions = {
       },
       authorization: {
         params: {
-          prompt: "consent",
+          prompt: "select_account consent",
           access_type: "offline",
           response_type: "code"
         }
@@ -522,12 +551,13 @@ export const authOptions: NextAuthOptions = {
                                 image: googleProfile.picture || null,
                                 username: email.split('@')[0] || `user_${Date.now().toString().substring(0, 6)}`,
                                 provider: 'google',
+                                providerAccountId: googleProfile.sub, // Added
                                 emailVerified: new Date(), // Google emails are verified
                                 role: 'user', // Default role
                                 updatedAt: new Date(), // Set update date
                                 createdAt: new Date() // Set creation date
                             });
-                            console.log("New Google user created:", email);
+                            console.log("New Google user created with ID:", googleProfile.sub);
                         } catch (createError) {
                             console.error("Error creating Google user:", createError);
                             // Return token without modifications if user creation fails
@@ -557,7 +587,12 @@ export const authOptions: NextAuthOptions = {
                         if (!dbUser.provider) {
                             dbUser.provider = 'google';
                             isModified = true;
-                            console.log(`Set provider for user ${dbUser.email} to google (was unset)`);
+                        }
+
+                        // Always ensure providerAccountId is set/updated for Google users
+                        if (googleProfile.sub && dbUser.providerAccountId !== googleProfile.sub) {
+                            dbUser.providerAccountId = googleProfile.sub;
+                            isModified = true;
                         }
                         
                         // Ensure email is verified for Google users
@@ -716,6 +751,12 @@ export const authOptions: NextAuthOptions = {
                 isModified = true;
               }
               
+              // Ensure providerAccountId is set
+              if (googleProfile.sub && existingUser.providerAccountId !== googleProfile.sub) {
+                existingUser.providerAccountId = googleProfile.sub;
+                isModified = true;
+              }
+
               // Ensure role is set but don't overwrite existing role
               if (!existingUser.role) {
                 existingUser.role = 'user';
