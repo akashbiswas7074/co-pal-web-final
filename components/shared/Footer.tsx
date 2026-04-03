@@ -2,11 +2,13 @@
 
 import { lazy, Suspense } from "react";
 import { Facebook, Instagram, Youtube, AtSign, Twitter, Linkedin } from "lucide-react";
+import { FaCcVisa, FaCcMastercard, FaCcAmex } from "react-icons/fa";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useWebsiteLogo } from "@/hooks/use-website-logo";
 import { useSiteConfig } from "@/hooks/use-site-config";
 import { useWebsiteFooter } from "@/hooks/use-website-footer";
+import { useFooterSettings } from "@/hooks/use-footer-settings";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -195,6 +197,7 @@ const CompanyInfoSection = () => {
   const { logo, isLoading: logoLoading } = useWebsiteLogo();
   const siteConfig = useSiteConfig();
   const { footer, isLoading: footerLoading } = useWebsiteFooter();
+  const { settings } = useFooterSettings();
 
   if (logoLoading || footerLoading) {
     return <LogoSkeleton />;
@@ -223,14 +226,14 @@ const CompanyInfoSection = () => {
           />
         </div>
       ) : (
-        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#ffffff' }}>{logoText}</h2>
+        <h2 style={{ fontSize: '24px', fontWeight: 700, color: settings.textColor }}>{logoText}</h2>
       )}
       {footer?.showFooterName !== false && (
-        <h3 style={{ fontSize: '16px', fontWeight: 500, color: '#d1d5db' }}>{footerName}</h3>
+        <h3 style={{ fontSize: '16px', fontWeight: 500, color: settings.textColor, opacity: 0.9 }}>{footerName}</h3>
       )}
-      <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>{contactAddress}</p>
-      <p style={{ fontSize: '13px', color: '#9ca3af' }}>{contactEmail}</p>
-      <p style={{ fontSize: '13px', color: '#9ca3af' }}>{contactPhone}</p>
+      <p style={{ fontSize: '13px', color: settings.textColor, opacity: 0.8, lineHeight: 1.6 }}>{contactAddress}</p>
+      <p style={{ fontSize: '13px', color: settings.textColor, opacity: 0.8 }}>{contactEmail}</p>
+      <p style={{ fontSize: '13px', color: settings.textColor, opacity: 0.8 }}>{contactPhone}</p>
 
       <Suspense fallback={<SocialMediaSkeleton />}>
         <SocialMediaLinks socialLinks={socialLinks} />
@@ -242,6 +245,7 @@ const CompanyInfoSection = () => {
 // Footer links section
 const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'; title: string }) => {
   const { footer, isLoading } = useWebsiteFooter();
+  const { settings } = useFooterSettings();
 
   if (isLoading) {
     return <LinksSkeleton title={title} />;
@@ -282,15 +286,15 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
 
   return (
     <div>
-      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px', color: '#ffffff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px', color: settings.textColor, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
         {title}
       </h3>
       <ul className="space-y-2 text-sm">
         {links.map((link, index) => {
           const isHashLink = link.url?.startsWith('#') || !link.url;
-          const linkStyle = { color: '#9ca3af', transition: 'color 0.2s', fontSize: '13px' };
-          const hoverIn = (e: any) => e.currentTarget.style.color = '#ffffff';
-          const hoverOut = (e: any) => e.currentTarget.style.color = '#9ca3af';
+          const linkStyle = { color: settings.textColor, opacity: 0.8, transition: 'opacity 0.2s', fontSize: '13px' };
+          const hoverIn = (e: any) => e.currentTarget.style.opacity = '1';
+          const hoverOut = (e: any) => e.currentTarget.style.opacity = '0.8';
 
           if (isHashLink) {
             return (
@@ -321,6 +325,7 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
 const FooterBottomSection = () => {
   const siteConfig = useSiteConfig();
   const { footer, isLoading } = useWebsiteFooter();
+  const { settings } = useFooterSettings();
 
   if (isLoading) {
     return (
@@ -343,21 +348,16 @@ const FooterBottomSection = () => {
     <div style={{
       marginTop: '48px',
       paddingTop: '24px',
-      borderTop: '1px solid rgba(255,255,255,0.1)',
+      borderTop: `1px solid ${settings.textColor}40`,
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
       fontSize: '13px',
-      color: '#6b7280',
+      color: settings.textColor,
+      opacity: 0.8
     }}
       className="md:flex-row md:justify-between md:items-center">
       <p>{copyrightText}</p>
-      <div className="flex space-x-4">
-        <span>Language</span>
-        <span style={{ fontWeight: 600, color: '#9ca3af' }}>United States | English</span>
-        <span>Currency</span>
-        <span style={{ fontWeight: 600, color: '#9ca3af' }}>USD</span>
-      </div>
     </div>
   );
 };
@@ -365,28 +365,45 @@ const FooterBottomSection = () => {
 export default function Footer() {
   const { isLoading: logoLoading } = useWebsiteLogo();
   const { isLoading: footerLoading } = useWebsiteFooter();
+  const { settings, loading: settingsLoading } = useFooterSettings();
   const pathname = usePathname();
 
-  if (logoLoading || footerLoading) {
+  if (logoLoading || footerLoading || settingsLoading) {
     return <FooterContentSkeleton />;
   }
+
+  const getBackgroundStyle = () => {
+    switch (settings.backgroundType) {
+      case 'mesh':
+        return `
+          radial-gradient(ellipse at 0% 100%, rgba(120, 40, 200, 0.55) 0%, transparent 50%),
+          radial-gradient(ellipse at 20% 60%, rgba(0, 180, 160, 0.35) 0%, transparent 45%),
+          radial-gradient(ellipse at 100% 100%, rgba(80, 140, 60, 0.4) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(30, 20, 60, 0.8) 0%, transparent 70%),
+          ${settings.backgroundColorValue}
+        `.replace(/\s+/g, ' ');
+      case 'gradient':
+        return settings.backgroundGradientValue;
+      case 'blur':
+        return `rgba(0, 0, 0, ${settings.blurOpacity / 100})`;
+      case 'solid':
+      default:
+        return settings.backgroundColorValue;
+    }
+  };
 
   return (
     <div className="footer-wrapper">
       {/* Subscribe Banner — sits on top of the footer */}
       <SubscribeBanner />
 
-      {/* Main Footer with dark gradient */}
+      {/* Main Footer with custom styling */}
       <footer style={{
-        background: `
-          radial-gradient(ellipse at 0% 100%, rgba(120, 40, 200, 0.55) 0%, transparent 50%),
-          radial-gradient(ellipse at 20% 60%, rgba(0, 180, 160, 0.35) 0%, transparent 45%),
-          radial-gradient(ellipse at 100% 100%, rgba(80, 140, 60, 0.4) 0%, transparent 50%),
-          radial-gradient(ellipse at 50% 50%, rgba(30, 20, 60, 0.8) 0%, transparent 70%),
-          #0d0d14
-        `.replace(/\s+/g, ' '),
-        color: '#d1d5db',
+        background: getBackgroundStyle(),
+        backdropFilter: settings.backgroundType === 'blur' ? 'blur(12px)' : 'none',
+        color: settings.textColor,
         padding: '56px 24px 32px',
+        transition: 'all 0.4s ease'
       }}>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           <Suspense fallback={<LogoSkeleton />}>
@@ -407,26 +424,51 @@ export default function Footer() {
 
           {/* Secure Payments info (replaces old subscribe column) */}
           <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px', color: '#ffffff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px', color: settings.textColor, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               SECURE PAYMENTS
             </h3>
-            <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6, marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: settings.textColor, opacity: 0.8, lineHeight: 1.6, marginBottom: '16px' }}>
               We support all major payment methods and ensure your transactions are safe and encrypted.
             </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {['VISA', 'MC', 'AMEX', 'UPI'].map(card => (
-                <span key={card} style={{
-                  padding: '4px 10px',
-                  border: '1px solid rgba(255,255,255,0.2)',
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <FaCcVisa 
+                size={38} 
+                color={settings.textColor} 
+                style={{ opacity: 0.8 }} 
+                title="Visa" 
+              />
+              <FaCcMastercard 
+                size={38} 
+                color={settings.textColor} 
+                style={{ opacity: 0.8 }} 
+                title="Mastercard" 
+              />
+              <FaCcAmex 
+                size={38} 
+                color={settings.textColor} 
+                style={{ opacity: 0.8 }} 
+                title="American Express" 
+              />
+              <span 
+                style={{
+                  height: '26px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 8px',
+                  border: `1.5px solid ${settings.textColor}`,
                   borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#9ca3af',
+                  fontSize: '12px',
+                  fontWeight: 900,
+                  fontStyle: 'italic',
+                  color: settings.textColor,
+                  opacity: 0.8,
                   letterSpacing: '0.05em',
-                }}>
-                  {card}
-                </span>
-              ))}
+                  marginTop: '1px' // alignment tweak
+                }}
+                title="UPI"
+              >
+                UPI
+              </span>
             </div>
           </div>
         </div>

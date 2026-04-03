@@ -21,13 +21,29 @@ interface SubCategoryShowcaseProps {
 }
 
 const SubCategoryShowcase: React.FC<SubCategoryShowcaseProps> = ({ subCategories = [], title = "Shop By SubCategories", onSubcategoryClick }) => {
-  const [emblaRef, emblaApi] = useEmblaCarousel(
-    { 
-      loop: true, 
-      align: "start", 
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+      align: "start",
       slidesToScroll: 1,
-    }
-  );
+      breakpoints: {
+          "(min-width: 1024px)": { slidesToScroll: 3 }
+      }
+  });
+
+  const [prevBtnEnabled, setPrevBtnEnabled] = React.useState(false);
+  const [nextBtnEnabled, setNextBtnEnabled] = React.useState(false);
+
+  const onSelect = React.useCallback(() => {
+      if (!emblaApi) return;
+      setPrevBtnEnabled(emblaApi.canScrollPrev());
+      setNextBtnEnabled(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  React.useEffect(() => {
+      if (!emblaApi) return;
+      onSelect();
+      emblaApi.on("select", onSelect);
+      emblaApi.on("reInit", onSelect);
+  }, [emblaApi, onSelect]);
 
   const scrollPrev = React.useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -43,74 +59,87 @@ const SubCategoryShowcase: React.FC<SubCategoryShowcaseProps> = ({ subCategories
 
   return (
     <section className=" mx-auto py-8 sm:py-10 relative px-4 sm:px-6 lg:px-8 w-[90%]">
-      <div className="flex justify-between items-center mb-5 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">{title}</h2>
-        <div className="flex items-center gap-2">
-           {/* Navigation Buttons - styled like ProductCarousel */}
-           <Button
-             variant="ghost"
-             size="icon"
-             className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-             onClick={scrollPrev}
-             disabled={!emblaApi?.canScrollPrev()} // Disable if cannot scroll
-           >
-             <ChevronLeft className="h-5 w-5" />
-             <span className="sr-only">Previous</span>
-           </Button>
-           <Button
-             variant="ghost"
-             size="icon"
-             className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-             onClick={scrollNext}
-             disabled={!emblaApi?.canScrollNext()} // Disable if cannot scroll
-           >
-             <ChevronRight className="h-5 w-5" />
-             <span className="sr-only">Next</span>
-           </Button>
+      <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
+                {title}
+            </h2>
+            <p className="text-gray-500 text-sm md:text-base max-w-2xl mx-auto font-medium">
+                Explore our curated collections just for you!{" "}
+                <span className="font-bold text-gray-900">Find Your Style.</span>
+            </p>
         </div>
-      </div>
 
-      <div className="embla overflow-hidden -mx-2 sm:-mx-3" ref={emblaRef}>
-        <div className="embla__container flex -ml-2 sm:-ml-3">
-          {subCategories.map((subCategory) => {
-            const imageUrl = subCategory.images?.[0]?.url || '/placeholder-image.png';
-            
-            // Extract parent category ID - handle both string and object formats
-            const parentCategoryId = subCategory.parent 
-              ? (typeof subCategory.parent === 'string' 
-                  ? subCategory.parent 
-                  : (subCategory.parent as any)?._id || (subCategory.parent as any)?.id || '')
-              : '';
+        <div className="relative">
+            <div className="embla" ref={emblaRef}>
+                <div className="embla__container flex -ml-8">
+                  {subCategories.map((subCategory) => {
+                    const imageUrl = subCategory.images?.[0]?.url || '/placeholder-image.png';
+                    const parentCategoryId = subCategory.parent 
+                      ? (typeof subCategory.parent === 'string' 
+                          ? subCategory.parent 
+                          : (subCategory.parent as any)?._id || (subCategory.parent as any)?.id || '')
+                      : '';
 
-            return (
-              <div
-                key={subCategory._id}
-                // 1 card on mobile, 2 cards on sm, 4 cards on desktop
-                className="embla__slide flex-[0_0_calc(100%-16px)] sm:flex-[0_0_calc(50%-12px)] lg:flex-[0_0_calc(25%-18px)] px-2 sm:px-3"
-              >
-                <Link 
-                  href={parentCategoryId 
-                    ? `/shop?category=${parentCategoryId}&subcategory=${subCategory.name}` 
-                    : `/shop?subcategory=${subCategory.name}`
-                  }
-                  className="group block relative aspect-[4/3] w-full overflow-hidden bg-gray-200 cursor-pointer"
+                    return (
+                      <div
+                        key={subCategory._id}
+                        className="embla__slide flex-[0_0_100%] min-w-0 pl-8 md:flex-[0_0_50%] lg:flex-[0_0_33.333%]"
+                      >
+                        <Link 
+                          href={parentCategoryId 
+                            ? `/shop?category=${parentCategoryId}&subcategory=${subCategory.name}` 
+                            : `/shop?subcategory=${subCategory.name}`
+                          }
+                          className="relative block aspect-[4/3] group overflow-hidden rounded-[2.5rem]"
+                        >
+                          <Image
+                            src={imageUrl}
+                            alt={subCategory.name}
+                            fill
+                            sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, (max-width: 1280px) 23vw, 15vw"
+                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                          {/* Dark Overlay */}
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors duration-500" />
+                          
+                          {/* Middle Content */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                              <h3 className="text-white text-3xl md:text-5xl font-bold tracking-tight drop-shadow-lg text-center px-4">
+                                  {subCategory.name}
+                              </h3>
+                          </div>
+                        </Link>
+                      </div>
+                    );
+                  })}
+                </div>
+            </div>
+
+            <div className="flex justify-center items-center gap-4 mt-12">
+                <button
+                    onClick={scrollPrev}
+                    disabled={!prevBtnEnabled}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border border-gray-100 ${prevBtnEnabled
+                            ? "bg-gray-100 text-black hover:bg-gray-200"
+                            : "bg-gray-50 text-gray-300 cursor-not-allowed"
+                        }`}
+                    aria-label="Previous categories"
                 >
-                  <Image
-                    src={imageUrl}
-                    alt={subCategory.name}
-                    fill
-                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, (max-width: 1280px) 23vw, 15vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105 filter grayscale hover:grayscale-0"
-                  />
-                  <div className="absolute bottom-4 left-4">
-                    <span className="bg-white text-black text-sm font-medium py-2 px-4 rounded-full">
-                      {subCategory.name}
-                    </span>
-                  </div>
-                </Link>
-              </div>
-            );
-          })}
+                    <ChevronLeft size={24} />
+                </button>
+                <button
+                    onClick={scrollNext}
+                    disabled={!nextBtnEnabled}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${nextBtnEnabled
+                            ? "bg-black text-white hover:bg-gray-800 shadow-lg"
+                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        }`}
+                    aria-label="Next categories"
+                >
+                    <ChevronRight size={24} />
+                </button>
+            </div>
         </div>
       </div>
     </section>

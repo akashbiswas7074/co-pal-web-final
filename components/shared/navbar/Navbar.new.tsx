@@ -26,6 +26,7 @@ import { useCartStore } from "@/store/cart";
 import { useWebsiteLogo } from "@/hooks/use-website-logo";
 import { useSiteConfig } from "@/hooks/use-site-config";
 import { useNavbarLinks } from "@/hooks/use-navbar-links";
+import { useNavbarSettings } from "@/hooks/use-navbar-settings";
 import {
   Accordion,
   AccordionContent,
@@ -115,6 +116,7 @@ const Navbar = () => {
   const siteConfig = useSiteConfig();
 
   const { links: navbarLinks, loading: navLinksLoading } = useNavbarLinks();
+  const { settings: navbarSettings, loading: navSettingsLoading } = useNavbarSettings();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useAtom(hamburgerMenuState, {
     store: useStore(),
   });
@@ -207,8 +209,52 @@ const Navbar = () => {
           </Suspense>
         )}
 
-        <nav className={`w-full transition-all duration-1000 ease-in-out ${isAuthPage ? 'bg-[#1a0a2c]/60 backdrop-blur-2xl py-2 sm:py-4 shadow-2xl' : isScrolled ? 'bg-[#1a0a2c]/60 backdrop-blur-2xl py-2 sm:py-4 shadow-2xl' : 'bg-[#1a0a2c]/40 backdrop-blur-xl py-2 sm:py-5 shadow-lg'} border-b border-white/5`}>
-          <div className="px-3 sm:px-6 lg:px-10 xl:px-20 mx-auto max-w-[1920px]">
+        {(() => {
+          let navStyle: React.CSSProperties = {};
+          let navBgClass = '';
+          
+          if (!navSettingsLoading && navbarSettings) {
+            if (navbarSettings.backgroundType === 'solid') {
+              navStyle.backgroundColor = navbarSettings.backgroundColorValue;
+              navBgClass = isScrolled || isAuthPage ? 'py-2 sm:py-4 shadow-2xl' : 'py-2 sm:py-5 shadow-lg';
+            } else if (navbarSettings.backgroundType === 'gradient') {
+              navStyle.background = navbarSettings.backgroundGradientValue;
+              navBgClass = isScrolled || isAuthPage ? 'py-2 sm:py-4 shadow-2xl' : 'py-2 sm:py-5 shadow-lg';
+            } else if (navbarSettings.backgroundType === 'blur') {
+              const hexToRgba = (hex: string, opacity: number) => {
+                let r = 0, g = 0, b = 0;
+                if (hex.length === 4) {
+                  r = parseInt(hex[1] + hex[1], 16);
+                  g = parseInt(hex[2] + hex[2], 16);
+                  b = parseInt(hex[3] + hex[3], 16);
+                } else if (hex.length === 7) {
+                  r = parseInt(hex.substring(1, 3), 16);
+                  g = parseInt(hex.substring(3, 5), 16);
+                  b = parseInt(hex.substring(5, 7), 16);
+                }
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+              };
+              
+              const isOpaque = isAuthPage || isScrolled;
+              const opacityVal = isOpaque ? Math.min((navbarSettings.blurOpacity + 20) / 100, 1) : navbarSettings.blurOpacity / 100;
+              
+              navStyle.backgroundColor = hexToRgba(navbarSettings.backgroundColorValue, opacityVal);
+              navBgClass = isOpaque ? 'backdrop-blur-2xl py-2 sm:py-4 shadow-2xl' : 'backdrop-blur-xl py-2 sm:py-5 shadow-lg';
+            }
+            if (navbarSettings.textColor) {
+               navStyle.color = navbarSettings.textColor;
+            }
+          } else {
+            // Default styling (while loading)
+            navBgClass = isAuthPage || isScrolled ? 'bg-[#1a0a2c]/60 backdrop-blur-2xl py-2 sm:py-4 shadow-2xl' : 'bg-[#1a0a2c]/40 backdrop-blur-xl py-2 sm:py-5 shadow-lg';
+          }
+
+          return (
+            <nav 
+              className={`w-full transition-all duration-1000 ease-in-out ${navBgClass} border-b border-white/5`}
+              style={navStyle}
+            >
+              <div className="px-3 sm:px-6 lg:px-10 xl:px-20 mx-auto max-w-[1920px]">
             <div className="flex items-center justify-between h-auto gap-1 sm:gap-4 md:gap-6 lg:gap-12 w-full">
               <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0 min-w-0">
                 {/* Logo */}
@@ -230,11 +276,11 @@ const Navbar = () => {
                       </div>
 
                     ) : (
-                      <div className="flex flex-col items-start leading-tight">
-                        <span className="text-white text-3xl sm:text-5xl md:text-7xl font-serif font-black tracking-[0.2em] sm:tracking-[0.3em] mb-1 sm:mb-2 drop-shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
+                      <div className="flex flex-col items-start leading-tight" style={{ color: navStyle.color || 'white' }}>
+                        <span className="text-3xl sm:text-5xl md:text-7xl font-serif font-black tracking-[0.2em] sm:tracking-[0.3em] mb-1 sm:mb-2 drop-shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
                           {logoText || "THE DUA BRAND"}
                         </span>
-                        <span className="text-[9px] sm:text-[12px] md:text-[14px] text-white/90 tracking-[0.4em] sm:tracking-[0.6em] font-bold uppercase pl-1 drop-shadow-md">
+                        <span className="text-[9px] sm:text-[12px] md:text-[14px] opacity-90 tracking-[0.4em] sm:tracking-[0.6em] font-bold uppercase pl-1 drop-shadow-md">
                           Handcrafted in Los Angeles
                         </span>
                       </div>
@@ -244,10 +290,10 @@ const Navbar = () => {
               </div>
 
               {/* Desktop Navigation Links - Centered */}
-              {navLinksLoading ? (
+              {(navLinksLoading || navSettingsLoading) ? (
                 <NavLinksSkeleton />
-              ) : (
-                <div className="hidden items-center gap-6 lg:gap-8 justify-center">
+              ) : navbarSettings?.desktopLayout === 'inline' ? (
+                <div className="hidden lg:flex items-center gap-6 lg:gap-8 justify-center flex-1">
 
 
 
@@ -255,7 +301,7 @@ const Navbar = () => {
                   {categories.length > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="text-[11px] lg:text-[13px] font-bold text-white/90 hover:text-white transition-all duration-300 uppercase tracking-[0.1em] flex items-center gap-1 group whitespace-nowrap py-2 px-1">
+                        <button className="text-[11px] lg:text-[13px] font-bold transition-all duration-300 uppercase tracking-[0.1em] flex items-center gap-1 group whitespace-nowrap py-2 px-1 hover:opacity-100 opacity-90" style={{ color: navStyle.color || 'white' }}>
                           Classifications
                           <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
                         </button>
@@ -310,16 +356,16 @@ const Navbar = () => {
                   )}
 
                   {navItems.map((item) => {
-                    // Use native anchor for hash links, Link for regular routes
                     const isHashLink = item.href?.startsWith('#');
-                    const linkClassName = "text-[11px] lg:text-[13px] font-bold text-white/90 hover:text-white transition-all duration-300 uppercase tracking-[0.1em] whitespace-nowrap py-2 px-1";
+                    const linkClassName = "text-[11px] lg:text-[13px] font-bold transition-all duration-300 uppercase tracking-[0.1em] whitespace-nowrap py-2 px-1";
 
                     if (isHashLink) {
                       return (
                         <a
                           key={item.href}
                           href={item.href}
-                          className={linkClassName}
+                          className={`${linkClassName} hover:opacity-100 opacity-90`}
+                          style={{ color: navStyle.color || 'white' }}
                         >
                           {item.label}
                         </a>
@@ -330,14 +376,15 @@ const Navbar = () => {
                       <Link
                         key={item.href}
                         href={item.href || '/'}
-                        className={linkClassName}
+                        className={`${linkClassName} hover:opacity-100 opacity-90`}
+                        style={{ color: navStyle.color || 'white' }}
                       >
                         {item.label}
                       </Link>
                     );
                   })}
                 </div>
-              )}
+              ) : null}
 
               {/* Mobile Search (toggle) */}
               <div className={`${isSearchVisible ? 'flex absolute top-14 sm:top-16 left-0 right-0 z-20 px-2 sm:px-4 py-3 bg-white shadow-lg border-b' : 'hidden'} md:hidden`}>
@@ -352,7 +399,8 @@ const Navbar = () => {
                 <button
                   onClick={toggleSearch}
                   className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 
-                    active:scale-95 hover:shadow-sm text-white/90 hover:text-white group"
+                    active:scale-95 hover:shadow-sm opacity-90 hover:opacity-100 group"
+                  style={{ color: navStyle.color || 'white' }}
                   title="Search"
                 >
                   <Search className="h-[18px] w-[18px] transition-colors duration-300" />
@@ -363,7 +411,8 @@ const Navbar = () => {
                 <Link href="/wishlist" passHref>
                   <button
                     className="relative p-2 hover:bg-white/10 rounded-full transition-all duration-300
-                      active:scale-95 hover:shadow-sm text-white/90 hover:text-white"
+                      active:scale-95 hover:shadow-sm opacity-90 hover:opacity-100"
+                    style={{ color: navStyle.color || 'white' }}
                     title="Wishlist"
                   >
                     <Heart className="h-[18px] w-[18px] transition-colors duration-300" />
@@ -382,7 +431,8 @@ const Navbar = () => {
                 <button
                   onClick={() => setCartDrawerOpen(true)}
                   className="relative p-2 hover:bg-white/10 rounded-full transition-all duration-300 
-                    active:scale-95 hover:shadow-sm text-white/90 hover:text-white"
+                    active:scale-95 hover:shadow-sm opacity-90 hover:opacity-100"
+                  style={{ color: navStyle.color || 'white' }}
                   title="Shopping Cart"
                 >
                   <ShoppingCart className="h-[18px] w-[18px] transition-colors duration-300" />
@@ -438,9 +488,12 @@ const Navbar = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex items-center hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-gray-400
-                        transition-all duration-300 shadow-sm hover:shadow-md active:scale-95 text-xs px-3 py-2 ml-1
-                        font-medium"
+                      className="flex items-center backdrop-blur-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-95 text-xs px-3 py-2 ml-1 font-medium border"
+                      style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.1)', 
+                        borderColor: 'rgba(255,255,255,0.2)',
+                        color: navStyle.color || 'white'
+                      }}
                     >
                       <User className="h-4 w-4 mr-2" />
                       <span className="hidden sm:inline">Sign In</span>
@@ -452,12 +505,13 @@ const Navbar = () => {
                 {/* Burger Menu Button (Far Right) */}
                 <button
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="p-2 text-white/90 hover:text-white transition-all duration-300 
-                    active:scale-95 flex items-center gap-2 group ml-2 border border-white/20 rounded-md"
+                  className={`p-2 hover:opacity-100 opacity-90 transition-all duration-300 
+                    active:scale-95 flex items-center gap-2 group ml-2 border border-white/20 rounded-md ${navbarSettings?.desktopLayout === 'inline' ? 'lg:hidden' : ''}`}
+                  style={{ color: navStyle.color || 'white' }}
                   aria-label="Open Menu"
                 >
                   <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
-                  <span className="hidden lg:inline-block text-[11px] font-bold tracking-widest uppercase text-white/70 group-hover:text-white transition-colors">Menu</span>
+                  <span className="hidden lg:inline-block text-[11px] font-bold tracking-widest uppercase opacity-70 group-hover:opacity-100 transition-opacity">Menu</span>
                 </button>
 
               </div>
@@ -465,6 +519,8 @@ const Navbar = () => {
             </div>
           </div>
         </nav>
+        );
+        })()}
 
         {/* Mobile menu - improved responsive design */}
         <div className={`
