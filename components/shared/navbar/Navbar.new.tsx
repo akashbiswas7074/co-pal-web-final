@@ -494,11 +494,11 @@ const Navbar = () => {
                           </Avatar>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" style={{ backgroundColor: dynamicBgColor, color: dynamicTextColor, borderColor: hexToRgba(dynamicTextColor, 0.1) }} className="w-56 backdrop-blur-2xl border shadow-2xl z-[1002] rounded-xl p-2 animate-in fade-in zoom-in-95 duration-200">
-                          <DropdownMenuLabel className="text-[10px] uppercase tracking-[0.2em] px-3 py-2 opacity-50">
+                          <DropdownMenuLabel className="text-[10px] uppercase tracking-[0.2em] px-3 py-2 opacity-50" style={{ color: dynamicTextColor }}>
                             Account Settings
                           </DropdownMenuLabel>
                           <DropdownMenuItem asChild className="focus:bg-white/10 rounded-lg transition-colors cursor-pointer">
-                            <Link href="/profile" className="flex items-center w-full px-3 py-2.5 text-sm">
+                            <Link href="/profile" className="flex items-center w-full px-3 py-2.5 text-sm" style={{ color: dynamicTextColor }}>
                               <User className="h-4 w-4 mr-3 opacity-70" />
                               My Profile
                             </Link>
