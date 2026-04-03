@@ -334,8 +334,9 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
                 )}
                 style={{ objectPosition: "center" }}
                 onLoad={() => handleImageLoad(banner.url)}
+                unoptimized={banner.url.includes("cloudinary")}
                 onError={() => {
-                  setError(`Failed to load banner image: ${banner.url}`);
+                  console.error(`Failed to load banner image: ${banner.url}`);
                   handleImageLoad(banner.url); // Mark as "loaded" to hide skeleton
                 }}
               />
