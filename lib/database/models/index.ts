@@ -19,6 +19,7 @@ import './product.model'; // Depends on User, Category, SubCategory
 // Import remaining models. Their order might need adjustment if they have strict interdependencies.
 import './banner.model';
 import './cart.model';
+import './collection-highlight.model'; // Added CollectionHighlight model
 import './coupon.model';
 import './featured.video.model';
 import './home.screen.offers'; // As listed in file search
@@ -26,6 +27,8 @@ import './order.model';
 import './pending-cod-order.model';
 import './topbar.model';
 import './wishlist.model';
+import './sample.model';
+import './sample-settings.model';
 
 // Optional: Re-export models if you prefer importing them via this index file.
 // e.g., export { default as User } from './user.model';

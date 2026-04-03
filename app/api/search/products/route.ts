@@ -140,15 +140,26 @@ export async function GET(request: NextRequest) {
           });
         }
 
+        // Get images and secondary image
+        const images = Array.isArray(product.images) ? product.images : [];
+        const subProducts = Array.isArray(product.subProducts) ? product.subProducts : [];
+        
+        let secondaryImage = null;
+        if (images.length > 1) {
+          secondaryImage = typeof images[1] === 'string' ? images[1] : (images[1]?.url || null);
+        } else if (subProducts[0]?.images?.length > 1) {
+          secondaryImage = typeof subProducts[0].images[1] === 'string' ? subProducts[0].images[1] : (subProducts[0].images[1]?.url || null);
+        }
+
         // Get main image
         let mainImage = '/images/placeholder-product.jpg';
         if (product.image) {
           mainImage = product.image;
-        } else if (product.subProducts?.[0]?.images?.[0]) {
-          const img = product.subProducts[0].images[0];
+        } else if (subProducts[0]?.images?.[0]) {
+          const img = subProducts[0].images[0];
           mainImage = typeof img === 'string' ? img : img.url;
-        } else if (product.images?.[0]) {
-          const img = product.images[0];
+        } else if (images[0]) {
+          const img = images[0];
           mainImage = typeof img === 'string' ? img : img.url;
         }
 
@@ -213,7 +224,9 @@ export async function GET(request: NextRequest) {
           isNew: isNew,
           isOnSale: isOnSale,
           createdAt: product.createdAt,
-          subProducts: product.subProducts || []
+          subProducts: JSON.parse(JSON.stringify(subProducts)),
+          images: JSON.parse(JSON.stringify(images)),
+          secondaryImage: secondaryImage
         };
       } catch (transformError) {
         console.error('[Search API] Transform error for product:', product._id, transformError);

@@ -76,9 +76,21 @@ export async function GET(request: NextRequest) {
     // Check if there are more products
     const hasMore = page < totalPages;
     
+    // Transform products for frontend
+    const transformedProducts = products.map((product: any) => {
+      const firstSubProduct = product.subProducts?.[0];
+      const images = firstSubProduct?.images || [];
+      return {
+        ...product,
+        id: product._id.toString(),
+        image: images[0]?.url || "/placeholder.png",
+        secondaryImage: images.length > 1 ? images[1]?.url : null,
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      products,
+      products: transformedProducts,
       pagination: {
         currentPage: page,
         totalPages,

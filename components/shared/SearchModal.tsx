@@ -378,7 +378,12 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
                             product={{
                               ...product,
                               id: product.id || product._id,
-                              image: product.image || product.subProducts?.[0]?.images?.[0]?.url || '/placeholder-product.png'
+                              image: product.image || product.subProducts?.[0]?.images?.[0]?.url || '/placeholder-product.png',
+                              secondaryImage: product.secondaryImage || 
+                                (Array.isArray(product.images) && product.images.length > 1 ? (typeof product.images[1] === 'string' ? product.images[1] : product.images[1]?.url) : 
+                                (Array.isArray(product.subProducts?.[0]?.images) && product.subProducts[0].images.length > 1 ? (typeof product.subProducts[0].images[1] === 'string' ? product.subProducts[0].images[1] : product.subProducts[0].images[1]?.url) : null)),
+                              subProducts: product.subProducts || [],
+                              images: product.images || []
                             }} 
                             viewMode="grid" 
                           />

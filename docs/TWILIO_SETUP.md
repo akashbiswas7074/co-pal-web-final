@@ -1,12 +1,9 @@
-# Twilio SMS OTP Authentication for Electrophilic
+# Twilio SMS OTP Authentication for E-Commerce
 
-This document provides information on how to set up and use the Twilio SMS OTP authentication system in the Electrophilic e-commerce application.
+This document provides information on how to set up and use the Twilio SMS OTP authentication system in the E-Commerce e-commerce application.
 
 ## Setup Instructions
 
-1. **Create a Twilio Account**
-   - Sign up at [https://www.twilio.com/](https://www.twilio.com/)
-   - Purchase a phone number with SMS capabilities
    - Get your Account SID and Auth Token from the Twilio Console dashboard
 
 2. **Set Environment Variables**

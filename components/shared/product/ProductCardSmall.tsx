@@ -9,6 +9,8 @@ import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getSamplesByProductId } from '@/lib/database/actions/sample.actions';
+import { SampleSelectionModal } from '@/components/shared/product/SampleSelectionModal';
 
 interface ProductProps {
   product: {
@@ -38,7 +40,9 @@ interface ProductProps {
     description?: string;
     _id?: string;
     _doc?: any;
+    secondaryImage?: string | null;
     tagValues?: Array<{ tag: any; value: string }>;
+    images?: any[];
   };
   viewMode?: 'grid' | 'list'; // Add support for grid or list view
 }
@@ -47,6 +51,9 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
   const { data: session, status } = useSession();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
+  const [samples, setSamples] = useState<any[]>([]);
+  const [loadingSamples, setLoadingSamples] = useState(false);
 
   // Use wishlist context to check if this product is in the wishlist
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -69,6 +76,8 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
     name = 'Product',
     price,
     image = "/images/broken-link.png",
+    subProducts = [],
+    secondaryImage: secondaryImageProp,
     slug = '',
     discount,
     originalPrice,
@@ -81,6 +90,29 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
     stock,
     description
   } = product;
+  
+  // Robustly determine the secondary image if not provided as a prop
+  const secondaryImage = (() => {
+    if (secondaryImageProp) return secondaryImageProp;
+    
+    // Try to get from subProducts
+    if (Array.isArray(subProducts) && subProducts.length > 0) {
+      const firstSubProduct = subProducts[0];
+      if (firstSubProduct?.images && Array.isArray(firstSubProduct.images) && firstSubProduct.images.length > 1) {
+        const img = firstSubProduct.images[1];
+        return typeof img === 'string' ? img : (img?.url || null);
+      }
+    }
+    
+    // Try to get from product images directly if available
+    if (Array.isArray(product.images) && product.images.length > 1) {
+      const img = product.images[1];
+      return typeof img === 'string' ? img : (img?.url || null);
+    }
+    
+    return null;
+  })();
+
 
   // Get the sold count by combining all possible sources to ensure accuracy
   const soldCount = (() => {
@@ -423,6 +455,31 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
     }
   };
 
+  const handleSampleClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (samples.length > 0) {
+      setIsSampleModalOpen(true);
+      return;
+    }
+
+    setLoadingSamples(true);
+    try {
+      const res = await getSamplesByProductId(productId);
+      if (res && res.length > 0) {
+        setSamples(res);
+        setIsSampleModalOpen(true);
+      } else {
+        toast.error("No samples available for this product");
+      }
+    } catch (error) {
+      toast.error("Failed to fetch samples");
+    } finally {
+      setLoadingSamples(false);
+    }
+  };
+
   // Determine if product is sold out - FIXED LOGIC
   const isSoldOut = (() => {
     try {
@@ -482,7 +539,7 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-lg transition-all duration-300 hover:shadow-xl bg-white border border-gray-200 hover:border-gray-300",
+        "group relative overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-xl bg-white border border-gray-100 glass-shine-container",
         viewMode === 'list' ? "flex" : "block"
       )}
       onMouseEnter={() => setIsHovering(true)}
@@ -493,17 +550,20 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
         viewMode === 'list' ? "flex w-full" : "block"
       )}>
         <div className={cn(
-          "relative overflow-hidden bg-gray-100",
+          "relative overflow-hidden bg-gray-50",
           viewMode === 'list'
-            ? "w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0 rounded-l-lg"
-            : "aspect-square w-full rounded-t-lg"
+            ? "w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0"
+            : "aspect-square w-full"
         )}>
+          {/* Glass Shine Overlay */}
+          <div className="glass-shine-overlay" />
           <Image
             src={image || "/images/broken-link.png"}
             alt={name}
             fill
             className={cn(
-              "object-cover transition-transform duration-500 ease-in-out group-hover:scale-105",
+              "object-cover transition-all duration-700 ease-in-out",
+              secondaryImage ? "group-hover:opacity-0" : "group-hover:scale-105",
               isSoldOut && "opacity-60"
             )}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -514,6 +574,24 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
               target.src = "/images/broken-link.png";
             }}
           />
+
+          {/* Secondary Image for Hover Effect */}
+          {secondaryImage && (
+            <Image
+              src={secondaryImage}
+              alt={`${name} secondary view`}
+              fill
+              className={cn(
+                "object-cover absolute inset-0 opacity-0 transition-all duration-700 ease-in-out transform scale-110 group-hover:opacity-100 group-hover:scale-100",
+                isSoldOut && "opacity-0" // Don't show secondary if sold out and we want to keep the label clear
+              )}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          )}
 
           {/* Sold Out Overlay */}
           {isSoldOut && (
@@ -526,38 +604,30 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
 
 
 
-          {/* Product badges section in the top-left corner with modern monochrome styling */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-            {/* Discount Badge with improved visibility */}
+          {/* Product badges section with refined styling */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
             {showDiscount && computedDiscount > 0 && (
-              <div className="bg-slate-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md opacity-95 border border-white/30 flex items-center">
-                <span className="mr-0.5 text-white/90">-</span>
-                <span className="text-sm">{computedDiscount}%</span>
-              </div>
+              <span className="bg-slate-700/60 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
+                -{computedDiscount}%
+              </span>
             )}
 
-            {/* Featured Product Badge - Show with highest priority if product is featured */}
             {isProductFeatured && (
-              <div className="bg-gradient-to-r from-indigo-200 to-indigo-300 text-indigo-800 text-xs font-bold px-2.5 py-1.5 rounded-full shadow-sm">
-                FEATURED
-              </div>
+              <span className="bg-indigo-500/60 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+                Featured
+              </span>
             )}
 
-            {/* New Arrival Badge - Only show if not featured to avoid badge overlap */}
             {isNewlyArrived && !isProductFeatured && (
-              <div className="bg-black text-white text-xs font-bold px-2.5 py-1.5 rounded-full shadow-sm">
-                NEW
-              </div>
+              <span className="bg-black/60 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-widest">
+                New
+              </span>
             )}
 
-            {/* Bestseller Badge with Order Count - Show if product is bestseller and not featured */}
             {isBestseller && !isProductFeatured && (
-              <div className="bg-gray-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-full shadow-sm flex items-center gap-1">
-                <span>BESTSELLER</span>
-                <span className="bg-white text-black text-[10px] px-1.5 py-0.5 rounded-full font-semibold ml-1">
-                  {soldCount.toLocaleString()}+
-                </span>
-              </div>
+              <span className="bg-gray-800/60 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase">
+                Bestseller
+              </span>
             )}
           </div>
 
@@ -587,28 +657,43 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
               )}
             </div>
           </button>
+
+          {/* Quick Add Sample Button */}
+          <div className={cn(
+            "absolute bottom-2 left-2 right-2 z-10 transition-all duration-300 transform",
+            isHovering ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          )}>
+            <Button
+              onClick={handleSampleClick}
+              disabled={loadingSamples}
+              className="w-full bg-black/80 backdrop-blur-md hover:bg-black text-white text-[10px] font-bold uppercase tracking-widest h-8 rounded-lg shadow-lg border-0"
+            >
+              {loadingSamples ? <Loader2 size={12} className="animate-spin" /> : "Get Sample"}
+            </Button>
+          </div>
         </div>
 
         <div className={cn(
           "p-3",
           viewMode === 'list' && "flex-1"
         )}>
-          {/* Product ID badge with modern styling */}
+          {/* Product ID badge with refined styling */}
           {displayProductId && (
-            <div className="mb-1 flex items-center">
-              <Tag size={12} className="text-gray-500 mr-1" />
-              <span className="text-xs text-gray-500">ID: {displayProductId}</span>
+            <div className="mb-2 flex items-center gap-1.5 text-gray-400">
+              <Tag size={11} strokeWidth={2} />
+              <span className="text-[10px] font-medium tracking-tight uppercase">ID: {displayProductId}</span>
             </div>
           )}
 
-          {/* Category and subcategory tags with modern monochrome pill design */}
-          <div className="mb-1 flex flex-wrap gap-1">
-            <span className="inline-block text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">{displayCategory}</span>
+          {/* Category tags with refined pill design */}
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            <span className="bg-gray-100 text-gray-400 text-[10px] font-medium px-2 py-0.5 rounded-full lowercase tracking-tight">
+              {displayCategory}
+            </span>
             {displaySubcategory && (
-              <>
-                <span className="inline-block text-xs text-gray-400">•</span>
-                <span className="inline-block text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">{displaySubcategory}</span>
-              </>
+              <span className="bg-gray-100 text-gray-400 text-[10px] font-medium px-2 py-0.5 rounded-full lowercase tracking-tight">
+                {displaySubcategory}
+              </span>
             )}
 
             {/* Display all tags - Only show if tags exist and have values */}
@@ -644,16 +729,16 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
             <p className="text-sm text-gray-600 line-clamp-2 mb-2">{description}</p>
           )}
 
-          {/* Enhanced Price Display with modern monochrome styling */}
-          <div className="mt-1.5 flex items-baseline flex-wrap gap-x-2">
-            {showDiscount && computedDiscount > 0 ? (
-              <>
-                <p className="text-base md:text-lg font-semibold text-black">{displayPrice}</p>
-                <p className="text-sm text-gray-500 line-through">{displayOriginalPrice}</p>
-                <p className="text-sm font-medium text-black bg-indigo-100 px-1.5 rounded">{computedDiscount}% off</p>
-              </>
-            ) : (
-              <p className="text-base md:text-lg font-semibold text-black">{displayPrice}</p>
+          {/* Refined Price Display */}
+          <div className="mt-2.5 flex items-center flex-wrap gap-2">
+            <p className="text-lg font-extrabold text-black">{displayPrice}</p>
+            {showDiscount && (
+              <div className="flex items-center gap-1.5">
+                <p className="text-[13px] text-gray-400 line-through font-medium">{displayOriginalPrice}</p>
+                <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                  {computedDiscount}% off
+                </span>
+              </div>
             )}
           </div>
 
@@ -686,44 +771,31 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
               </div>
             )}
 
-            {/* Display sold count with modern monochrome styling */}
-            <div className="flex items-center text-xs text-gray-600">
-              <ShoppingBag className="w-3.5 h-3.5 mr-1 text-gray-700" />
-              <span className="font-medium">{displaySoldCount} sold</span>
+            {/* Refined sold count info */}
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center text-[11px] font-semibold text-gray-500">
+                <ShoppingBag className="w-3 h-3 mr-1" />
+                <span>{displaySoldCount} sold</span>
+              </div>
+              <p className="text-[9px] text-gray-400 font-medium">
+                MRP: {displayOriginalPrice || displayPrice} (Incl. taxes)
+              </p>
             </div>
-
-            {/* Free shipping tag with modern monochrome styling */}
-            {finalPrice >= 499 && (
-              <span className="text-[10px] text-black bg-gray-100 px-1.5 py-0.5 rounded-sm font-medium">
-                FREE DELIVERY
-              </span>
-            )}
-
-            {/* Add to cart button for list view */}
-            {viewMode === 'list' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-auto"
-                disabled={isSoldOut}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toast.success(`${name} added to cart!`);
-                }}
-              >
-                <ShoppingCart size={16} className="mr-2" />
-                Add to Cart
-              </Button>
-            )}
           </div>
-
-          {/* MRP label with modern monochrome styling */}
-          {showDiscount && computedDiscount > 0 && (
-            <p className="text-xs text-gray-500 mt-1.5">MRP: {displayOriginalPrice} (Incl. all taxes)</p>
-          )}
         </div>
       </Link>
+
+      <SampleSelectionModal 
+        product={{
+          _id: productId,
+          name: name,
+          slug: slug,
+          subProducts: subProducts
+        }}
+        samples={samples}
+        isOpen={isSampleModalOpen}
+        onOpenChange={setIsSampleModalOpen}
+      />
     </div>
   );
 };

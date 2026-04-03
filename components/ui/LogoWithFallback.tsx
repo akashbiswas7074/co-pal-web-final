@@ -14,7 +14,7 @@ interface LogoWithFallbackProps {
 
 const LogoWithFallback: React.FC<LogoWithFallbackProps> = ({
   src,
-  fallbackText = 'Electrophilic',
+  fallbackText = "E-Commerce",
   width = 120,
   height = 40,
   alt = 'Logo',

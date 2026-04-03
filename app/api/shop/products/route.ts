@@ -173,6 +173,7 @@ const cleanProductData = (product: any) => {
       // Preserve tagValues and subProducts for detailed view
       tagValues: product.tagValues || [],
       subProducts: product.subProducts || [],
+      secondaryImage: processedImages.length > 1 ? processedImages[1] : null,
     };
 
     console.log(`Processed product ${product.name}: price=${price}, image=${primaryImage}, quantity=${totalQuantity}`);

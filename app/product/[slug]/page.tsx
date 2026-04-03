@@ -21,10 +21,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { SampleSelectionModal } from "@/components/shared/product/SampleSelectionModal";
 import {
   getRelatedProductsBySubCategoryIds,
   getSingleProduct,
 } from "@/lib/database/actions/product.actions";
+import { getSamplesByProductId } from "@/lib/database/actions/sample.actions";
 import Link from "next/link";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import IdInvalidError from "@/components/shared/IdInvalidError";
@@ -70,7 +72,6 @@ interface ShippingReturnsConfig {
 }
 
 // Lazy load heavy components
-const ProductCard = lazy(() => import("@/components/shared/ProductCard"));
 const ProductCardSmall = lazy(() => import("@/components/shared/product/ProductCardSmall").then(module => ({ default: module.ProductCardSmall })));
 const ProductCardGrid = lazy(() => import("@/components/shared/ProductCardGrid"));
 
@@ -181,6 +182,10 @@ const ProductPage = () => {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false); // Added missing state
   const [userPincode, setUserPincode] = useState<string>(''); // Added for expected delivery
+  const [sampleData, setSampleData] = useState<any[]>([]);
+  const [selectedSample, setSelectedSample] = useState<any | null>(null);
+  const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
+  const [isSampleSelected, setIsSampleSelected] = useState(false);
 
   // Zoom feature states
   const [isZooming, setIsZooming] = useState(false);
@@ -229,8 +234,16 @@ const ProductPage = () => {
       }
 
       setProductData(productResult);
+      const product = productResult as any;
 
-      const subCategoryIds = (productResult as { subCategories?: any[] }).subCategories?.map((i: any) => i._id) || [];
+      // Fetch sample data if product exists
+      if (product._id) {
+        getSamplesByProductId(product._id).then(samples => {
+          setSampleData(samples || []);
+        });
+      }
+
+      const subCategoryIds = product.subCategories?.map((i: any) => i._id) || [];
       if (subCategoryIds.length > 0) {
         console.log("Fetching related products for categories:", subCategoryIds);
         const relatedResult = await getRelatedProductsBySubCategoryIds(subCategoryIds);
@@ -251,6 +264,8 @@ const ProductPage = () => {
               originalPrice: originalPrice,
               slug: p.slug,
               discount: p.subProducts?.[0]?.discount,
+              subProducts: p.subProducts || [],
+              images: p.images || [],
             };
           }) || [];
         setRelatedProductsData(transformed);
@@ -335,6 +350,50 @@ const ProductPage = () => {
     }
   }, [productData]);
 
+  // --- Effect to track recently viewed products ---
+  useEffect(() => {
+    if (productData && productData.success !== false) {
+      try {
+        const storedProducts = localStorage.getItem('recentlyViewedProducts');
+        let recentlyViewed = storedProducts ? JSON.parse(storedProducts) : [];
+
+        // Remove existing entry for this product to avoid duplicates and move to front
+        recentlyViewed = recentlyViewed.filter((p: any) => (p.id || p._id) !== productData._id);
+
+        // Add current product to the beginning
+        const subProduct = productData.subProducts?.[0];
+        const newEntry = {
+          id: productData._id,
+          _id: productData._id,
+          name: productData.name,
+          description: productData.description || '',
+          price: productData.price,
+          originalPrice: productData.originalPrice,
+          discount: productData.discount,
+          image: productData.images?.[0] || (subProduct?.images?.[0]?.url || subProduct?.images?.[0]) || '/placeholder.png',
+          images: productData.images || subProduct?.images || [],
+          subProducts: productData.subProducts || [],
+          secondaryImage: productData.secondaryImage || (subProduct?.images?.length > 1 ? (subProduct.images[1]?.url || subProduct.images[1]) : null),
+          slug: productData.slug,
+          category: productData.category?.name || 'Category',
+          categoryId: productData.category?._id || '',
+        };
+
+        recentlyViewed.unshift(newEntry);
+
+        // Limit to 10 products
+        recentlyViewed = recentlyViewed.slice(0, 10);
+
+        localStorage.setItem('recentlyViewedProducts', JSON.stringify(recentlyViewed));
+
+        // Dispatch custom event for same-tab updates
+        window.dispatchEvent(new CustomEvent('recentlyViewedUpdated'));
+      } catch (error) {
+        console.error('Error updating recently viewed products:', error);
+      }
+    }
+  }, [productData]);
+
   // Mobile thumbnail scrolling is now handled by the ThumbnailScroller component
 
   // Effect to update zoom pane if selected image changes while zooming
@@ -362,7 +421,37 @@ const ProductPage = () => {
   };
 
   const handleAddToCart = () => {
-    console.log("Add to cart clicked. Selected size index:", selectedSizeIndex);
+    console.log("Add to cart clicked. Selected size index:", selectedSizeIndex, "isSampleSelected:", isSampleSelected);
+
+    // Check if sample is selected
+    if (isSampleSelected && (selectedSample || sampleData[0])) {
+      const activeSample = selectedSample || sampleData[0];
+      const itemToAdd = {
+        _id: activeSample._id,
+        _uid: `sample_${activeSample._id}`,
+        name: `${productData.name} (${activeSample.variant || 'Sample'})`,
+        image: activeSample.image || (productData.subProducts?.[0]?.images?.[0]?.url) || "/placeholder.png",
+        price: activeSample.price,
+        slug: productData.slug,
+        product: productData._id,
+        quantity: 1,
+        qty: 1,
+        originalPrice: activeSample.price,
+        discount: 0,
+        availableQty: 99,
+        isSample: true,
+      };
+
+      console.log("Adding sample to cart:", itemToAdd);
+      try {
+        addItem(itemToAdd);
+        toast.success(`${productData.name} (${activeSample.variant || 'Sample'}) added to cart!`);
+      } catch (error) {
+        console.error("Error adding sample to cart:", error);
+        toast.error("Failed to add sample to cart.");
+      }
+      return;
+    }
 
     // Check if product has no sizes or only empty size values
     if (!hasValidSizes(p)) {
@@ -422,6 +511,7 @@ const ProductPage = () => {
         slug: productData.slug,
         quantity: 1,
         qty: 1,
+        product: productData._id,
         originalPrice: originalPrice, // Ensure originalPrice is properly set
         discount: subProductDiscount,
         availableQty: availableQty,
@@ -476,6 +566,7 @@ const ProductPage = () => {
       price: sizeFinalPrice,
       size: selectedSizeInfo.size,
       slug: productData.slug,
+      product: productData._id,
       quantity: 1,
       qty: 1,
       originalPrice: sizeOriginalPrice,
@@ -1053,6 +1144,18 @@ const ProductPage = () => {
                 </div>
               </div>
             ) : null}
+            <ExpectedDeliverySimple
+              destination_pin={userPincode}
+              className="mt-6"
+            />
+
+            {/* Sample Selection Modal */}
+            <SampleSelectionModal 
+              product={p}
+              samples={sampleData}
+              isOpen={isSampleModalOpen}
+              onOpenChange={setIsSampleModalOpen}
+            />
           </>
         ) : (
           <IdInvalidError message={fetchError || "Product not found"} />
@@ -1220,133 +1323,75 @@ const ProductPage = () => {
             )}
 
             {/* Product Info */}
-            <div className="space-y-4 sm:space-y-5 w-full">
+            <div className="space-y-6 w-full">
               {/* Product Info Header */}
               <div>
-                {/* Product Category - Only show if category exists */}
-                {p.category?.name && (
-                  <div className="text-sm font-medium text-gray-500 mb-1">
-                    {p.category.name}
-                  </div>
-                )}
-
-                {/* Product Name */}
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{p.name}</h1>
-
-                {/* Brand - Only show if brand exists */}
-                {p.brand && typeof p.brand === 'string' && p.brand.trim() && (
-                  <div className="text-sm font-medium text-gray-600 mb-2">
-                    Brand: <span className="text-gray-900">{p.brand}</span>
-                  </div>
-                )}
-
-                {/* Product Type & SKU */}
-                <div className="flex flex-wrap justify-between text-xs sm:text-sm mb-2 gap-y-1">
-                  {/* SubCategories - Only show if subCategories exist and have names */}
-                  {Array.isArray(p.subCategories) && p.subCategories.length > 0 && p.subCategories.some((sc: any) => sc && sc.name && sc.name.trim()) && (
-                    <span className="text-gray-700">
-                      {p.subCategories
-                        .filter((sc: any) => sc && sc.name && sc.name.trim())
-                        .map((sc: any) => sc.name)
-                        .join(' · ')}
-                    </span>
+                <div className="flex items-center gap-2 mb-3">
+                  {isNewProduct && (
+                    <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-widest">New</span>
                   )}
-                  {p.sku && <span className="text-gray-500">SKU: {p.sku}</span>}
+                  {displayDiscount > 0 && (
+                    <span className="bg-[#e41e26] text-white text-[10px] font-bold px-2 py-1 uppercase tracking-widest">Sale</span>
+                  )}
                 </div>
 
-                {/* Tags - Only show if tagValues exist and have values */}
-                {Array.isArray(p.tagValues) && p.tagValues.length > 0 && p.tagValues.some((tv: any) => tv && (tv.value || tv.tag?.name)) && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {p.tagValues
-                      .filter((tv: any) => tv && (tv.value || tv.tag?.name))
-                      .map((tv: any, index: number) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {tv.value || tv.tag?.name || ''}
-                        </Badge>
+                {/* Product Name */}
+                <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 uppercase tracking-tight mb-3">
+                  {p.name}
+                </h1>
+
+                {/* Reviews Summary */}
+                {p.numReviews > 0 && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          className={cn(
+                            "transition-colors",
+                            i < Math.floor(p.rating || 0)
+                              ? "fill-[#ffcc00] text-[#ffcc00]"
+                              : "text-gray-300"
+                          )}
+                        />
                       ))}
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">{(p.rating || 0).toFixed(1)}</span>
+                    <span className="text-sm text-gray-400 font-medium whitespace-nowrap">
+                      ({(p.numReviews || 0).toLocaleString()} {p.numReviews === 1 ? 'REVIEW' : 'REVIEWS'})
+                    </span>
                   </div>
                 )}
+
+                {/* Price Section */}
+                <div className="flex items-baseline gap-4 mb-6">
+                  <span className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tighter">
+                    ₹{displayPrice?.toLocaleString('en-IN')}
+                  </span>
+                  {displayOriginalPrice && displayPrice !== displayOriginalPrice && (
+                    <span className="text-lg sm:text-xl text-gray-400 line-through font-medium">
+                      ₹{displayOriginalPrice.toLocaleString('en-IN')}
+                    </span>
+                  )}
+                </div>
+
+                <div className="bg-[#f8f8f8] p-4 border-l-4 border-black mb-6">
+                  <p className="text-[13px] font-bold uppercase tracking-tight text-gray-900 mb-1">
+                    Complimentary Sample With Every Order
+                  </p>
+                  <p className="text-[11px] text-gray-500 uppercase tracking-widest">
+                    Limited Time Offer · Handcrafted Excellence
+                  </p>
+                </div>
               </div>
 
-              {/* Price Section */}
-              <div className="space-y-1">
-                {displayPrice !== undefined ? (
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                      ₹{displayPrice.toLocaleString('en-IN')}
-                    </p>
-                    {typeof displayOriginalPrice === 'number' && typeof displayPrice === 'number' && displayOriginalPrice > displayPrice && (
-                      <p className="text-base sm:text-lg font-medium line-through text-gray-500">
-                        ₹{displayOriginalPrice.toLocaleString('en-IN')}
-                      </p>
-                    )}
-
-                    {displayDiscount > 0 && (
-                      <span className="bg-green-50 text-green-700 text-xs sm:text-sm font-medium px-2 py-0.5 rounded ml-1">
-                        {displayDiscount}% OFF
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-lg sm:text-xl font-semibold text-gray-500">Price unavailable</p>
-                )}
-                <p className="text-xs sm:text-sm text-gray-500">
-                  MRP inclusive of all taxes
+              {/* Urgency Widget */}
+              <div className="flex items-center gap-3 py-4 border-y border-gray-100 mb-6">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                <p className="text-[13px] font-medium text-gray-700">
+                  <span className="font-bold">24 people</span> are viewing this right now
                 </p>
-
-                {/* Stock Quantity Indicator */}
-                {isSelectedSizeChosen && selectedSizeData ? (
-                  // For products with selected sizes
-                  <>
-                    {selectedSizeData.qty > 0 && selectedSizeData.qty <= 5 ? (
-                      <p className="text-xs sm:text-sm text-orange-600 font-medium flex items-center">
-                        <AlertCircle size={14} className="mr-1" />
-                        Only {selectedSizeData.qty} left in stock!
-                      </p>
-                    ) : selectedSizeData.qty > 0 ? (
-                      <p className="text-xs sm:text-sm text-green-600 font-medium">
-                        In stock ({selectedSizeData.qty} available)
-                      </p>
-                    ) : (
-                      <p className="text-xs sm:text-sm text-red-600 font-medium">
-                        Out of stock
-                      </p>
-                    )}
-                  </>
-                ) : !hasValidSizes(p) ? (
-                  // For products without sizes or with empty size values
-                  <>
-                    {(() => {
-                      // Directly use getProductQuantity function to get accurate quantity
-                      const qty = getProductQuantity(p);
-                      console.log(`Display quantity for ${p.name}: ${qty}`); // Debug log
-
-                      if (qty > 0 && qty <= 5) {
-                        return (
-                          <p className="text-xs sm:text-sm text-orange-600 font-medium flex items-center">
-                            <AlertCircle size={14} className="mr-1" />
-                            Only {qty} left in stock!
-                          </p>
-                        );
-                      } else if (qty > 0) {
-                        return (
-                          <p className="text-xs sm:text-sm text-green-600 font-medium">
-                            In stock ({qty} available)
-                          </p>
-                        );
-                      } else if (subProduct?.price) {
-                        // If there's a price but no explicit quantity, show "In stock"
-                        return (
-                          <p className="text-xs sm:text-sm text-green-600 font-medium">
-                            In stock
-                          </p>
-                        );
-                      }
-
-                      return null;
-                    })()}
-                  </>
-                ) : null}
               </div>
 
               {/* Add PincodeServiceability component before the size selection */}
@@ -1364,17 +1409,17 @@ const ProductPage = () => {
                 />
               </div>
 
-              {/* Size Selection - Only show if sizes are available, not empty, and size value isn't empty */}
+              {/* Size Selection */}
               {p.sizes && p.sizes.length > 0 && p.sizes.some((size: any) => size.size && size.size.trim() !== "") ? (
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-medium">Select Size</h3>
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900">Select Volume</h3>
                     {p.category?.name && p.subCategories?.[0]?.name && (
                       <SizeGuideModal
                         category={p.category.name}
                         subCategory={p.subCategories[0].name}
                         trigger={
-                          <Button variant="link" className="text-sm p-0 h-auto text-gray-700 hover:text-gray-900">
+                          <Button variant="link" className="text-[11px] uppercase tracking-widest p-0 h-auto text-gray-500 hover:text-gray-900 font-bold">
                             Size Guide
                           </Button>
                         }
@@ -1382,11 +1427,35 @@ const ProductPage = () => {
                     )}
                   </div>
 
-                  <div id="sizeGrid" className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                  <div id="sizeGrid" className="grid grid-cols-4 gap-3 mb-4">
+                    {/* Add Sample Button if available */}
+                    {sampleData && sampleData.length > 0 && sampleData.some(s => s.status === "available") && (
+                      <button
+                        onClick={() => {
+                          if (sampleData.length === 1) {
+                            setSelectedSample(sampleData[0]);
+                            setIsSampleSelected(true);
+                            setSelectedSizeIndex(undefined);
+                            setShowError(false);
+                          } else {
+                            setIsSampleModalOpen(true);
+                          }
+                        }}
+                        className={cn(
+                          "h-12 border flex flex-col items-center justify-center text-[10px] font-bold transition-all uppercase tracking-tight",
+                          isSampleSelected
+                            ? 'border-black bg-black text-white shadow-lg translate-y-[-2px]'
+                            : 'border-gray-200 text-gray-600 hover:border-black'
+                        )}
+                      >
+                        Sample
+                        <span className={isSampleSelected ? "text-gray-300 font-medium" : "text-gray-400 font-medium"}>
+                          {isSampleSelected && selectedSample ? `₹${selectedSample.price}` : (sampleData.length > 1 ? "Select" : `₹${sampleData[0].price}`)}
+                        </span>
+                      </button>
+                    )}
                     {p.sizes.map((size: any, index: number) => {
-                      // Skip rendering empty size options
                       if (!size.size || size.size.trim() === "") return null;
-
                       const isOutOfStock = size.qty === 0;
                       const isSelected = selectedSizeIndex === index;
 
@@ -1396,98 +1465,81 @@ const ProductPage = () => {
                           onClick={() => {
                             if (!isOutOfStock) {
                               setSelectedSizeIndex(index);
+                              setIsSampleSelected(false);
                               setShowError(false);
                             }
                           }}
                           disabled={isOutOfStock}
-                          className={`
-                            relative p-3 border text-center text-sm font-medium transition-all
-                            ${isSelected
-                              ? 'border-black bg-black text-white'
+                          className={cn(
+                            "h-12 border flex items-center justify-center text-xs font-bold transition-all uppercase tracking-tight",
+                            isSelected
+                              ? 'border-black bg-black text-white shadow-lg translate-y-[-2px]'
                               : isOutOfStock
-                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'border-gray-300 hover:border-gray-400'
-                            }
-                          `}
+                                ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed opacity-60'
+                                : 'border-gray-200 text-gray-600 hover:border-black'
+                          )}
                         >
                           {size.size}
-                          {isOutOfStock && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-full h-0.5 bg-gray-400 transform rotate-45"></div>
-                            </div>
-                          )}
                         </button>
                       );
                     })}
                   </div>
 
                   {showError && (
-                    <p className="text-red-500 text-sm mb-3">Please select a size</p>
+                    <p className="text-red-600 text-[10px] font-bold uppercase tracking-widest mt-2">Please select a volume</p>
                   )}
                 </div>
               ) : null}
 
+              {/* Add to Cart Actions */}
+              <div className="flex flex-col gap-4 mb-8">
+                <Button
+                  size="lg"
+                  className={cn(
+                    "w-full h-14 text-sm font-bold uppercase tracking-[0.2em] transition-all rounded-none",
+                    isSampleSelected || (!hasValidSizes(p) ? hasStock(p) : (isSelectedSizeChosen && isSelectedSizeAvailable))
+                      ? "bg-black hover:bg-gray-900 text-white shadow-xl active:scale-[0.98]"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  )}
+                  onClick={handleAddToCart}
+                  disabled={!isSampleSelected && (!hasValidSizes(p) ? !hasStock(p) : (!isSelectedSizeChosen || !isSelectedSizeAvailable))}
+                >
+                  {isSampleSelected
+                    ? `Add ${selectedSample?.variant || 'Sample'} To Bag`
+                    : (!hasValidSizes(p)
+                      ? (hasStock(p) ? 'Add To Bag' : 'Sold Out')
+                      : (isSelectedSizeChosen && isSelectedSizeAvailable ? 'Add To Bag' : 'Select Volume'))}
+                </Button>
 
-              {/* Add to Cart Button */}
-              <div className="mb-6">
-                {/* Alternative rendering for products without sizes or with empty sizes */}
-                {(!hasValidSizes(p)) ? (
-                  <Button
-                    size="lg"
-                    className={cn(
-                      "w-full py-5 sm:py-6 h-auto text-sm sm:text-base rounded-full font-medium transition-all",
-                      hasStock(p)
-                        ? "bg-gray-900 hover:bg-black text-white active:scale-[0.98]"
-                        : "bg-gray-300 text-gray-600 cursor-not-allowed"
-                    )}
-                    onClick={handleAddToCart}
-                    disabled={!hasStock(p)}
-                  >
-                    {hasStock(p)
-                      ? 'Add to Bag'
-                      : 'Out of Stock'}
-                  </Button>
-                ) : (
-                  /* Original rendering for products with sizes */
-                  <Button
-                    size="lg"
-                    className={cn(
-                      "w-full py-5 sm:py-6 h-auto text-sm sm:text-base rounded-full font-medium transition-all",
-                      (isSelectedSizeChosen && isSelectedSizeAvailable)
-                        ? "bg-gray-900 hover:bg-black text-white active:scale-[0.98]"
-                        : "bg-gray-300 text-gray-600 cursor-not-allowed"
-                    )}
-                    onClick={handleAddToCart}
-                    disabled={!isSelectedSizeChosen || !isSelectedSizeAvailable}
-                  >
-                    {isSelectedSizeChosen && isSelectedSizeAvailable ? 'Add to Bag' : 'Select Size'}
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full h-14 text-sm font-bold uppercase tracking-[0.2em] transition-all rounded-none border-gray-200 flex items-center justify-center gap-3",
+                    isInWishlist ? "bg-red-50 border-red-100 text-red-600" : "hover:border-black"
+                  )}
+                  onClick={handleWishlistToggle}
+                  disabled={!productData || isWishlistLoading}
+                >
+                  <Heart size={18} fill={isInWishlist ? "currentColor" : "none"} strokeWidth={2} />
+                  {isInWishlist ? 'Wishlisted' : 'Add To Wishlist'}
+                </Button>
               </div>
 
-              {/* Favorite Button */}
-              <Button
-                variant="outline"
-                size="lg"
-                className={cn(
-                  "w-full py-4 sm:py-5 h-auto text-sm sm:text-base rounded-full border font-medium transition-all flex items-center justify-center gap-2",
-                  isInWishlist
-                    ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
-                    : "border-gray-300 hover:border-gray-400 text-gray-900"
-                )}
-                onClick={handleWishlistToggle}
-                disabled={!productData || isWishlistLoading}
-              >
-                <Heart
-                  size={18}
-                  fill={isInWishlist ? "currentColor" : "none"}
-                  className={cn(isInWishlist && "text-red-600")}
-                />
-                {isWishlistLoading
-                  ? 'Updating...'
-                  : isInWishlist ? 'Favorite' : 'Favorite'
-                }
-              </Button>
+              {/* Trust Badges - theduabrand style */}
+              <div className="grid grid-cols-3 gap-4 py-8 border-y border-gray-100 mb-8 text-center bg-[#fafafa]">
+                <div className="flex flex-col items-center gap-2">
+                  <ShieldCheck size={20} className="text-gray-900" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Cruelty Free</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <Package size={20} className="text-gray-900" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Handcrafted</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <Truck size={20} className="text-gray-900" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Global Shipping</span>
+                </div>
+              </div>
 
               {/* Product Details with Modified Tabs - Removed Long Description Tab */}
               <div className="border-t pt-5 sm:pt-6">

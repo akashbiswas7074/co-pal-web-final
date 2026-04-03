@@ -40,14 +40,7 @@ const MobileBottomBar = () => {
           <Home className="w-6 h-6" />
           <span className="text-xs mt-1 para">Home</span>
         </Link>
-        <Link
-          href={"#"}
-          onClick={() => handleOnClickHamburgerMenu()}
-          className="flex flex-col items-center text-gray-600 hover:text-black"
-        >
-          <Menu className="w-6 h-6" />
-          <span className="text-xs mt-1 para">Menu</span>
-        </Link>
+
         <Link
           href={"/shop"}
           className="flex flex-col items-center text-gray-600 hover:text-black"

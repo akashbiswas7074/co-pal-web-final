@@ -32,26 +32,26 @@ interface BannerCarouselProps {
 
 // Enhanced skeleton loader for banner
 const BannerSkeleton = ({ isMobile }: { isMobile: boolean }) => (
-  <div className={`relative w-full ${isMobile ? "h-[250px]" : "h-[500px]"} overflow-hidden mb-[20px]`}>
+  <div className={`relative w-full ${isMobile ? "h-[80vh] mt-[60px]" : "h-[85vh]"} overflow-hidden mb-[20px]`}>
     <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-shimmer">
       <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
     </div>
-    
+
     {/* Skeleton navigation dots */}
     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex space-x-2">
       {[...Array(3)].map((_, i) => (
         <div key={i} className="w-3 h-3 rounded-full bg-white/30 animate-pulse" />
       ))}
     </div>
-    
+
     {/* Skeleton arrows */}
     <div className="absolute left-2 top-1/2 transform -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 animate-pulse" />
     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 animate-pulse" />
   </div>
 );
 
-const BannerCarousel: React.FC<BannerCarouselProps> = ({ 
-  priority = true, 
+const BannerCarousel: React.FC<BannerCarouselProps> = ({
+  priority = true,
   skipLazyLoad = false,
   className = "",
   onBannerLoad
@@ -66,7 +66,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   const [isVisible, setIsVisible] = useState(skipLazyLoad);
   const [hasStartedLoading, setHasStartedLoading] = useState(skipLazyLoad);
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
-  
+
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
   const impressionsTracked = useRef<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -108,11 +108,11 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bannerId, type: 'impression' }),
         });
-        
+
         if (!response.ok) {
           console.warn('Failed to track banner impression - server returned:', response.status);
         }
-        
+
         // Mark this banner as impressed regardless of server response
         // to avoid repeated failed requests
         impressionsTracked.current.add(bannerId);
@@ -150,7 +150,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
         // Fetch mobile banners - these are already filtered and sorted by the backend
         const mobileResult = await fetchAllWebsiteBanners("mobile");
         setMobileBanners(Array.isArray(mobileResult) ? mobileResult : []);
-        
+
         // Call onBannerLoad callback if provided
         if (onBannerLoad) {
           onBannerLoad();
@@ -250,8 +250,8 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   }, [error]);
 
   // Handle image load tracking
-  const handleImageLoad = useCallback((bannerId: string) => {
-    setImagesLoaded(prev => new Set(prev).add(bannerId));
+  const handleImageLoad = useCallback((imageUrl: string) => {
+    setImagesLoaded(prev => new Set(prev).add(imageUrl));
   }, []);
 
   // Show skeleton while not visible or loading
@@ -267,24 +267,23 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   if (banners.length === 0) {
     if (error) {
       return (
-        <div className={cn(`relative w-full ${isMobileView ? "h-[250px]" : "h-[500px]"} flex items-center justify-center bg-gray-100`, className)}>
+        <div className={cn(`relative w-full ${isMobileView ? "h-[250px]" : "h-[85vh]"} flex items-center justify-center bg-gray-100`, className)}>
           <div className="text-red-500">Error loading banners. Please try again later.</div>
         </div>
       );
     }
     return (
-      <div className={cn(`relative w-full ${isMobileView ? "h-[250px]" : "h-[500px]"} flex items-center justify-center bg-gray-100`, className)}>
+      <div className={cn(`relative w-full ${isMobileView ? "h-[250px]" : "h-[85vh]"} flex items-center justify-center bg-gray-100`, className)}>
         <div className="text-gray-500">No banners available.</div>
       </div>
-    ); 
+    );
   }
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        `relative w-full ${
-          isMobileView ? "h-[250px]" : "h-[500px]"
+        `relative w-full ${isMobileView ? "h-[80vh] mt-[60px]" : "h-[85vh]"
         } overflow-hidden mb-[20px] group animate-fade-in`,
         className
       )}
@@ -292,49 +291,52 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
       onMouseLeave={() => setAutoPlay(true)}
     >
       {banners.map((banner, index) => {
-        const BannerWrapper = banner.linkUrl ? 
+        const BannerWrapper = banner.linkUrl ?
           ({ children }: { children: React.ReactNode }) => (
-            <Link 
-              href={banner.linkUrl || '#'} 
-              className="block w-full h-full"
+            <Link
+              href={banner.linkUrl || '#'}
+              className="block w-full h-full relative"
               onClick={() => banner.public_id && trackClick(banner.public_id)}
             >
               {children}
             </Link>
-          ) : 
+          ) :
           ({ children }: { children: React.ReactNode }) => (
-            <div className="w-full h-full">{children}</div>
+            <div className="w-full h-full relative">{children}</div>
           );
 
-        const isImageLoaded = imagesLoaded.has(banner.public_id);
+        const isImageLoaded = imagesLoaded.has(banner.url);
+
+        // Removed the optimization that unmounts non-adjacent banners 
+        // to ensure all images can pre-fetch and transitions work correctly.
 
         return (
           <div
             key={banner.public_id || index}
-            className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${
-              currentIndex === index ? "opacity-100 z-10" : "opacity-0 z-0"
-            }`}
+            className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${currentIndex === index ? "opacity-100 z-10" : "opacity-0 z-0"
+              }`}
           >
             <BannerWrapper>
               {/* Show skeleton until image loads */}
               {!isImageLoaded && (
                 <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-shimmer" />
               )}
-              
+
               <Image
                 src={banner.url}
                 alt={banner.altText || `Banner ${index + 1}`}
                 fill
-                priority={priority && index === 0} // First image gets priority loading
+                priority={priority} // All carousel images get priority loading to prevent opacity-0 lazy load bugs
                 sizes="(max-width: 768px) 100vw, 1200px"
                 className={cn(
                   "object-cover transition-opacity duration-300",
                   isImageLoaded ? "opacity-100" : "opacity-0"
                 )}
-                onLoad={() => handleImageLoad(banner.public_id)}
+                style={{ objectPosition: "center" }}
+                onLoad={() => handleImageLoad(banner.url)}
                 onError={() => {
                   setError(`Failed to load banner image: ${banner.url}`);
-                  handleImageLoad(banner.public_id); // Mark as "loaded" to hide skeleton
+                  handleImageLoad(banner.url); // Mark as "loaded" to hide skeleton
                 }}
               />
             </BannerWrapper>
@@ -351,18 +353,17 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`w-3 h-3 rounded-full transition-all ${
-              currentIndex === index
-                ? "bg-white scale-125"
-                : "bg-white/50 hover:bg-white/80"
-            }`}
+            className={`w-3 h-3 rounded-full transition-all ${currentIndex === index
+              ? "bg-white scale-125"
+              : "bg-white/50 hover:bg-white/80"
+              }`}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>
 
       {/* Arrow Navigation - Only visible on hover or on focus for accessibility */}
-      <Button 
+      <Button
         variant="ghost"
         size="icon"
         className="absolute left-2 top-1/2 transform -translate-y-1/2 z-20 bg-black/20 hover:bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"

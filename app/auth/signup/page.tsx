@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, User as UserIcon, Mail, Lock, AlertCircle, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, User as UserIcon, Mail, Lock, AlertCircle, UserPlus, Gift } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { useWebsiteLogo } from '@/hooks/use-website-logo';
@@ -21,6 +21,7 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,15 +43,15 @@ export default function SignUpPage() {
     }
 
     if (password.length < 6) {
-        setError('Password must be at least 6 characters long.');
-        toast.error('Password must be at least 6 characters long.');
-        return;
+      setError('Password must be at least 6 characters long.');
+      toast.error('Password must be at least 6 characters long.');
+      return;
     }
 
     if (!firstName.trim() || !lastName.trim()) {
-        setError('First name and last name are required.');
-        toast.error('First name and last name are required.');
-        return;
+      setError('First name and last name are required.');
+      toast.error('First name and last name are required.');
+      return;
     }
 
     setIsLoading(true);
@@ -59,7 +60,7 @@ export default function SignUpPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, username, email, password }),
+        body: JSON.stringify({ firstName, lastName, username, email, password, referralCode }),
       });
 
       const data = await response.json();
@@ -82,37 +83,33 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-gray-900" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div className="flex flex-col lg:flex-row w-full min-h-[calc(100vh-64px)] relative z-10" style={{ position: 'relative', overflow: 'hidden', minHeight: 'calc(100vh - 64px)' }}>
 
       {/* Left column - Professional Image Background section */}
-      <div 
+      <div
         className="hidden lg:flex relative overflow-hidden"
         style={{
           width: '50%',
           minHeight: '100vh',
         }}
       >
-        {/* Fixed background image - sticks to left half of screen */}
+        {/* CSS background image instead of fixed div */}
         <div
-          className="fixed inset-0"
+          className="absolute inset-0"
           style={{
-            width: '50vw',
-            height: '100vh',
-            left: 0,
-            top: 0,
-            backgroundImage: `url('https://res.cloudinary.com/dgfk4nqhf/image/upload/v1767465033/image_ty1t8h.png')`,
+            backgroundImage: `url('${logo?.authBackgroundUrl || "https://res.cloudinary.com/dgfk4nqhf/image/upload/v1767465033/image_ty1t8h.png"}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
             zIndex: 0,
           }}
         ></div>
-        
+
         {/* Professional overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/75 z-10"></div>
-        
+
         {/* Seamless blend attaching both sections - positioned at right edge */}
-        <div 
+        <div
           className="absolute top-0 bottom-0 right-0 pointer-events-none z-20"
           style={{
             width: '350px',
@@ -121,21 +118,21 @@ export default function SignUpPage() {
             WebkitBackdropFilter: 'blur(5px)',
           }}
         ></div>
-        
+
         {/* Content */}
         <div className="relative z-50 flex flex-col justify-center px-8 xl:px-16 py-12 xl:py-20 text-white h-full">
           <div className="max-w-lg">
             {/* Logo */}
             <div className="flex items-center mb-6 xl:mb-8">
-              <Image 
-                src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"} 
-                alt={logo?.altText || "Company Logo"} 
-                width={200} 
+              <Image
+                src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"}
+                alt={logo?.altText || "Company Logo"}
+                width={200}
                 height={60}
                 className="drop-shadow-lg w-auto h-auto max-w-[180px] xl:max-w-[200px]"
               />
             </div>
-            
+
             <h1 className="text-3xl sm:text-4xl xl:text-5xl font-bold mb-4 xl:mb-6 text-white tracking-tight">
               Join {logo?.name || "VibeCart"} Today
             </h1>
@@ -147,20 +144,20 @@ export default function SignUpPage() {
       </div>
 
       {/* Right column - Professional Form section */}
-      <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900" style={{ minHeight: '100vh' }}>
+      <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900">
         <div className="w-full max-w-lg">
           {/* Mobile logo section */}
           <div className="text-center mb-6 sm:mb-8 lg:hidden">
-            <Image 
-              src={logo?.logoUrl || "/logo.png"} 
-              alt={logo?.altText || "Company Logo"} 
-              width={160} 
+            <Image
+              src={logo?.logoUrl || "/logo.png"}
+              alt={logo?.altText || "Company Logo"}
+              width={160}
               height={50}
               className="mx-auto mb-3 sm:mb-4 drop-shadow-md w-auto h-auto max-w-[140px] sm:max-w-[160px]"
             />
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Join {logo?.name || "VibeCart"} Today!</h1>
           </div>
-          
+
           <Card className="border-0 shadow-xl sm:shadow-2xl bg-white dark:bg-gray-800 relative overflow-hidden">
             <CardHeader className="space-y-2 sm:space-y-3 text-center pb-6 sm:pb-8 pt-6 sm:pt-8 lg:pt-10 px-4 sm:px-6 lg:px-8">
               <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -170,7 +167,7 @@ export default function SignUpPage() {
                 Enter your details to get started
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="px-4 sm:px-6 lg:px-8">
               <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                 {error && (
@@ -179,7 +176,7 @@ export default function SignUpPage() {
                     <span className="break-words">{error}</span>
                   </div>
                 )}
-                
+
                 <div className="space-y-3 sm:space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
@@ -215,7 +212,7 @@ export default function SignUpPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="username" className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Username</Label>
                     <div className="relative group">
@@ -232,7 +229,7 @@ export default function SignUpPage() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Email Address</Label>
                     <div className="relative group">
@@ -249,7 +246,7 @@ export default function SignUpPage() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Password</Label>
                     <div className="relative group">
@@ -275,7 +272,7 @@ export default function SignUpPage() {
                     </div>
                     <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Password must be at least 6 characters</p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword" className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Confirm Password</Label>
                     <div className="relative group">
@@ -300,11 +297,27 @@ export default function SignUpPage() {
                       </button>
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="referralCode" className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">Referral Code (Optional)</Label>
+                    <div className="relative group">
+                      <Gift className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-focus-within:text-gray-700 transition-colors z-10" />
+                      <Input
+                        id="referralCode"
+                        type="text"
+                        placeholder="Enter referral code"
+                        value={referralCode}
+                        onChange={handleInputChange(setReferralCode)}
+                        className="pl-10 sm:pl-12 pr-4 h-12 sm:h-14 border-2 border-gray-200 focus:border-gray-700 dark:border-gray-600 dark:focus:border-gray-500 rounded-xl transition-all duration-200 bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-gray-700 focus:ring-opacity-20 text-sm sm:text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
                 </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 sm:h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]" 
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -321,12 +334,12 @@ export default function SignUpPage() {
                 </Button>
               </form>
             </CardContent>
-            
+
             <CardFooter className="flex justify-center border-t border-gray-200 dark:border-gray-700 pt-6 sm:pt-8 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8">
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center">
                 Already have an account?{' '}
-                <Link 
-                  href="/auth/signin" 
+                <Link
+                  href="/auth/signin"
                   className="font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 transition-colors hover:underline"
                 >
                   Sign In
@@ -334,7 +347,7 @@ export default function SignUpPage() {
               </p>
             </CardFooter>
           </Card>
-          
+
           <p className="text-center text-[10px] sm:text-xs text-gray-500 mt-6 sm:mt-8 dark:text-gray-400 leading-relaxed px-4">
             By creating an account, you agree to our{' '}
             <Link href="/terms" className="text-gray-600 dark:text-gray-400 hover:underline">Terms of Service</Link> and{' '}

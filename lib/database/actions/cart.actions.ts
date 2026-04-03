@@ -132,7 +132,8 @@ export async function saveCartForUser(cartItems: any[], userId: string) {
       
       // Ensure essential fields are present for the DB schema
       return {
-        product: item._id || item.product, // Maps to schema's 'product' (ObjectId)
+        product: item.isSample ? undefined : (item._id || item.product), 
+        sample: item.isSample ? (item._id || item.sample) : undefined,
         name: item.name,
         price: price,
         qty: quantity,
@@ -145,7 +146,7 @@ export async function saveCartForUser(cartItems: any[], userId: string) {
         user: userId, // *** ADDED: Include userId in each product item as per schema ***
         // vendor: item.vendor, // Include if available and needed
       };
-    }).filter(item => item.product && item.user); // Filter out items missing product OR user ID
+    }).filter(item => (item.product || item.sample) && item.user); // Filter out items missing product OR sample OR user ID
 
     console.log("[saveCartForUser] Normalized cartItems for DB:", JSON.stringify(normalizedCartItems, null, 2)); // Log normalized items
     

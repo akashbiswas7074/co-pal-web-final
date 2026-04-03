@@ -12,11 +12,13 @@ import { revalidatePath, unstable_cache } from "next/cache";
 import Size from "../models/size.model";   // Add this import
 
 // Helper function to extract the first image URL and discount
-const getFirstSubProductInfo = (product: any): { image: string; discount: number } => {
+const getFirstSubProductInfo = (product: any): { image: string; secondaryImage: string | null; discount: number } => {
   const firstSubProduct = product.subProducts?.[0];
+  const images = firstSubProduct?.images || [];
   return {
-    image: firstSubProduct?.images?.[0]?.url || "/placeholder.png", // Ensure placeholder exists
-    discount: firstSubProduct?.discount || 0, // Extract discount, default to 0
+    image: images[0]?.url || "/placeholder.png",
+    secondaryImage: images.length > 1 ? images[1]?.url : null,
+    discount: firstSubProduct?.discount || 0,
   };
 };
 
@@ -25,6 +27,7 @@ const getEnhancedProductInfo = (product: any) => {
   console.log(`[getEnhancedProductInfo] Processing product: ${product.name || 'unnamed'}`);
 
   let primaryImage = '/placeholder.png';
+  let secondaryImage = null;
   let discount = 0;
   let price = 0;
   let originalPrice = 0;
@@ -41,6 +44,16 @@ const getEnhancedProductInfo = (product: any) => {
           primaryImage = firstImage;
         } else if (firstImage && typeof firstImage === 'object' && firstImage.url) {
           primaryImage = firstImage.url;
+        }
+
+        // Extract secondary image for hover effects
+        if (firstSubProduct.images.length > 1) {
+          const secondImage = firstSubProduct.images[1];
+          if (typeof secondImage === 'string') {
+            secondaryImage = secondImage;
+          } else if (secondImage && typeof secondImage === 'object' && secondImage.url) {
+            secondaryImage = secondImage.url;
+          }
         }
       }
 
@@ -69,10 +82,11 @@ const getEnhancedProductInfo = (product: any) => {
     price = originalPrice;
   }
 
-  console.log(`[getEnhancedProductInfo] Product ${product.name}: image=${primaryImage}, price=${price}, discount=${discount}`);
+  console.log(`[getEnhancedProductInfo] Product ${product.name}: image=${primaryImage}, secondaryImage=${secondaryImage}, price=${price}, discount=${discount}`);
 
   return {
     image: primaryImage,
+    secondaryImage: secondaryImage,
     discount: discount,
     price: price,
     originalPrice: originalPrice,
@@ -526,34 +540,34 @@ export const getSingleProduct = unstable_cache(
       // Process tagValues
       const processedTagValues = Array.isArray(product.tagValues)
         ? product.tagValues
-            .filter((tv: any) => tv && (tv.value || tv.tag))
-            .map((tv: any) => ({
-              tag: tv.tag
-                ? {
-                    _id: tv.tag._id?.toString() || "",
-                    name: tv.tag.name || "",
-                  }
-                : null,
-              value: tv.value || "",
-            }))
+          .filter((tv: any) => tv && (tv.value || tv.tag))
+          .map((tv: any) => ({
+            tag: tv.tag
+              ? {
+                _id: tv.tag._id?.toString() || "",
+                name: tv.tag.name || "",
+              }
+              : null,
+            value: tv.value || "",
+          }))
         : [];
 
       // Process shipping dimensions
       const processedShippingDimensions = product.shippingDimensions
         ? {
-            length: product.shippingDimensions.length || 0,
-            breadth: product.shippingDimensions.breadth || 0,
-            height: product.shippingDimensions.height || 0,
-            weight: product.shippingDimensions.weight || 0,
-            unit: product.shippingDimensions.unit || "cm",
-          }
+          length: product.shippingDimensions.length || 0,
+          breadth: product.shippingDimensions.breadth || 0,
+          height: product.shippingDimensions.height || 0,
+          weight: product.shippingDimensions.weight || 0,
+          unit: product.shippingDimensions.unit || "cm",
+        }
         : {
-            length: 0,
-            breadth: 0,
-            height: 0,
-            weight: 0,
-            unit: "cm",
-          };
+          length: 0,
+          breadth: 0,
+          height: 0,
+          weight: 0,
+          unit: "cm",
+        };
 
       // Build the final product object with safe values
       let newProduct = {
@@ -573,8 +587,8 @@ export const getSingleProduct = unstable_cache(
         ingredients: processedIngredients,
         tagValues: processedTagValues,
         reviews: processedReviews,
-        rating: product.rating || 0,
-        numReviews: product.numReviews || 0,
+        rating: totalReviews > 0 ? (processedReviews.reduce((acc: number, r: any) => acc + r.rating, 0) / totalReviews) : 0,
+        numReviews: totalReviews,
         style: validStyle,
         images: processedSubProducts[validStyle]?.images || [],
         sizes: processedSubProducts[validStyle]?.sizes || [],

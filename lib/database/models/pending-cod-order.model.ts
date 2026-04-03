@@ -64,8 +64,6 @@ const PendingCodOrderSchema = new Schema<IPendingCodOrder>(
 PendingCodOrderSchema.index({ user: 1 });
 PendingCodOrderSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 }); // 24 hour TTL
 
-PendingCodOrderSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 }); // 24 hour TTL
-
 // Force deletion of the model if it exists to ensure schema updates (especially strict: false) are picked up in dev
 if (process.env.NODE_ENV !== 'production' && models.PendingCodOrder) {
   delete models.PendingCodOrder;

@@ -7,6 +7,7 @@ export interface IWebsiteLogo {
   logoUrl: string;
   altText: string;
   mobileLogoUrl?: string;
+  authBackgroundUrl?: string;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -30,6 +31,9 @@ const WebsiteLogoSchema = new Schema<IWebsiteLogo>(
     mobileLogoUrl: {
       type: String,
     },
+    authBackgroundUrl: {
+      type: String,
+    },
     isActive: {
       type: Boolean,
       default: false,
@@ -50,6 +54,9 @@ WebsiteLogoSchema.pre('save', async function (next) {
   }
   next();
 });
+
+// Force refresh schema for Next.js dev server caching
+delete mongoose.models.WebsiteLogo;
 
 // Create and export the model
 const WebsiteLogo = mongoose.models.WebsiteLogo || mongoose.model<IWebsiteLogo>('WebsiteLogo', WebsiteLogoSchema);

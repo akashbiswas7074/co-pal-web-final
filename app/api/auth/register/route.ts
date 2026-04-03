@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
 
-    const { firstName, lastName, username, email, password } = await req.json(); // Changed name to firstName, lastName
+    const { firstName, lastName, username, email, password, referralCode } = await req.json(); // Changed name to firstName, lastName
 
     // Basic validation
     if (!firstName || !lastName || !username || !email || !password) { // Changed name to firstName, lastName
@@ -20,6 +20,16 @@ export async function POST(req: NextRequest) {
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return NextResponse.json({ message: 'User with this email or username already exists' }, { status: 409 }); // 409 Conflict
+    }
+
+    // Handle referral code
+    let referredBy = null;
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode: referralCode.toUpperCase() });
+      if (referrer) {
+        referredBy = referrer._id;
+        console.log(`[Registration] User referred by: ${referrer.email}`);
+      }
     }
 
     // Note: Password hashing is handled by the pre-save hook in user.model.ts
@@ -45,6 +55,7 @@ export async function POST(req: NextRequest) {
       verificationToken: hashedVerificationToken,
       verificationTokenExpires,
       emailVerified: null, // Explicitly set to null initially
+      referredBy,
     });
 
     await newUser.save();
@@ -65,7 +76,7 @@ export async function POST(req: NextRequest) {
     console.error('Registration error:', error);
     // Handle potential duplicate key errors from MongoDB if the initial check somehow missed it
     if (error instanceof Error && 'code' in error && error.code === 11000) {
-        return NextResponse.json({ message: 'User with this email or username already exists.' }, { status: 409 });
+      return NextResponse.json({ message: 'User with this email or username already exists.' }, { status: 409 });
     }
     return NextResponse.json({ message: 'An error occurred during registration' }, { status: 500 });
   }

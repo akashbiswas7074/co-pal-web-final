@@ -30,6 +30,7 @@ export interface IWebsiteFooter {
   }>;
   copyrightText: string;
   isActive: boolean;
+  showFooterName: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -88,6 +89,10 @@ const WebsiteFooterSchema = new Schema<IWebsiteFooter>(
       type: Boolean,
       default: false,
     },
+    showFooterName: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
@@ -110,5 +115,15 @@ WebsiteFooterSchema.pre("save", async function (next) {
 const WebsiteFooter =
   mongoose.models.WebsiteFooter ||
   mongoose.model<IWebsiteFooter>("WebsiteFooter", WebsiteFooterSchema);
+
+// Ensure the schema has showFooterName if it was missing from a cached model
+if (WebsiteFooter.schema && !WebsiteFooter.schema.paths.showFooterName) {
+  WebsiteFooter.schema.add({
+    showFooterName: {
+      type: Boolean,
+      default: true,
+    },
+  });
+}
 
 export default WebsiteFooter;

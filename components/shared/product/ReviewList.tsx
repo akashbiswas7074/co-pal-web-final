@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star } from 'lucide-react';
+import { Star, Play } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ interface ReviewListProps {
     createdAt: string;
     userImage?: string;
     verified?: boolean;
+    images?: Array<{ url: string; public_id: string }>;
+    videos?: Array<{ url: string; public_id: string }>;
   }>;
   productName: string;
 }
@@ -27,62 +29,103 @@ const ReviewList = ({ reviews, productName }: ReviewListProps) => {
 
   if (reviews.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">No reviews yet for this product.</p>
+      <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+        <p className="text-gray-400 font-medium tracking-tight">No reviews yet for this product.</p>
       </div>
     );
   }
 
-  // Only show the first 3 reviews initially
-  const displayedReviews = sortedReviews.slice(0, 3);
+  // Initial display limit removed for the masonry grid to work better, 
+  // but we can still use the modal for "View All" if there are many.
+  const displayedReviews = sortedReviews;
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-xl font-semibold">{reviews.length} Reviews for {productName}</h3>
-      
-      {displayedReviews.map((review) => (
-        <div key={review._id} className="border-b pb-5 last:border-0">
-          <div className="flex items-start">
-            <Avatar className="h-10 w-10 mr-3">
-              <AvatarImage src={review.userImage || ""} alt={review.name} />
-              <AvatarFallback>
-                {review.name.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="font-medium">{review.name}</span>
-                {review.verified && (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                    Verified Purchase
-                  </Badge>
-                )}
-                <span className="text-gray-500 text-sm">
-                  {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
-                </span>
-              </div>
-              
-              <div className="flex my-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${
-                      i < review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-                    }`}
+    <div className="mt-12">
+      <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+        {displayedReviews.map((review) => (
+          <div
+            key={review._id}
+            className="break-inside-avoid bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
+          >
+            {/* Media Content */}
+            {(review.images?.length || 0) > 0 || (review.videos?.length || 0) > 0 ? (
+              <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+                {review.videos && review.videos.length > 0 ? (
+                  <div className="relative w-full h-full">
+                    <video
+                      src={review.videos[0].url}
+                      className="w-full h-full object-cover"
+                      muted
+                      loop
+                      playsInline
+                      onMouseOver={(e) => e.currentTarget.play()}
+                      onMouseOut={(e) => e.currentTarget.pause()}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/5 group-hover:bg-transparent transition-colors">
+                      <div className="w-12 h-12 rounded-full border-2 border-white/50 flex items-center justify-center backdrop-blur-sm">
+                        <Play size={20} className="text-white fill-white ml-1" />
+                      </div>
+                    </div>
+                  </div>
+                ) : review.images && review.images.length > 0 ? (
+                  <img
+                    src={review.images[0].url}
+                    alt="Customer review image"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                ))}
+                ) : null}
               </div>
-              
-              <p className="mt-1 text-gray-700">{review.comment}</p>
+            ) : null}
+
+            {/* Content Section */}
+            <div className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={14}
+                      className={i < review.rating ? "fill-[#ffcc00] text-[#ffcc00]" : "text-gray-200"}
+                    />
+                  ))}
+                </div>
+                {review.verified && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#00b67a]">Verified</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-gray-900 line-clamp-1">{review.name}</p>
+                <p className="text-[11px] text-gray-400 font-medium">
+                  {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-700 leading-relaxed italic">
+                "{review.comment}"
+              </p>
+
+              {/* Multiple Images Indicator if any */}
+              {((review.images?.length || 0) > 1 || (review.videos?.length || 0) > 1) && (
+                <div className="flex gap-2 pt-2 overflow-x-auto pb-1 scrollbar-hide">
+                  {[...(review.images || []), ...(review.videos || [])].slice(1).map((media, idx) => (
+                    <div key={idx} className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0 border border-gray-100">
+                      <img src={media.url} className="w-full h-full object-cover" alt="" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+        ))}
+      </div>
+
+      {reviews.length > 12 && (
+        <div className="mt-12 text-center">
+          <AllReviewsModal productName={productName} reviews={reviews} />
         </div>
-      ))}
-      
-      {/* Add View All Reviews button if there are more than 3 reviews */}
-      {reviews.length > 3 && (
-        <AllReviewsModal productName={productName} reviews={reviews} />
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import ReviewMediaUploader from "@/components/shared/product/ReviewMediaUploader";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,10 @@ const OrderItemReview = ({
     rating: 5,
     comment: "",
   });
+  const [media, setMedia] = useState<{ images: any[], videos: any[] }>({
+    images: [],
+    videos: []
+  });
 
   const handleChange = (
     e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>
@@ -85,7 +90,9 @@ const OrderItemReview = ({
           rating: formData.rating,
           comment: formData.comment,
           orderId: orderId,
-          orderItemId: orderItemId
+          orderItemId: orderItemId,
+          images: media.images,
+          videos: media.videos,
         }),
       });
 
@@ -101,6 +108,7 @@ const OrderItemReview = ({
 
       setOpen(false);
       setFormData({ rating: 5, comment: "" });
+      setMedia({ images: [], videos: [] });
       toast.success("Review submitted successfully!");
       router.refresh();
     } catch (error) {
@@ -128,9 +136,9 @@ const OrderItemReview = ({
 
         <div className="flex items-center space-x-4 py-4">
           {productImage && (
-            <img 
-              src={productImage} 
-              alt={productName} 
+            <img
+              src={productImage}
+              alt={productName}
               className="w-16 h-16 object-cover rounded-md"
             />
           )}
@@ -148,11 +156,10 @@ const OrderItemReview = ({
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
-                    className={`h-6 w-6 cursor-pointer ${
-                      formData.rating >= star
+                    className={`h-6 w-6 cursor-pointer ${formData.rating >= star
                         ? "text-yellow-400 fill-yellow-400"
                         : "text-gray-300"
-                    }`}
+                      }`}
                     onClick={() => setFormData((prev) => ({ ...prev, rating: star }))}
                   />
                 ))}
@@ -182,6 +189,13 @@ const OrderItemReview = ({
                 rows={4}
                 placeholder="Share your experience with this product..."
                 className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Upload Photos or Videos</label>
+              <ReviewMediaUploader
+                onMediaChange={(images, videos) => setMedia({ images, videos })}
+                maxFiles={5}
               />
             </div>
           </div>

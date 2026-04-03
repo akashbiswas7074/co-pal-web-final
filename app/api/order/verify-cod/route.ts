@@ -188,6 +188,12 @@ export async function POST(request: NextRequest) {
       console.log(`[API /api/order/verify-cod] Updating product stock for order ${savedOrder._id.toString()}...`);
 
       const stockUpdatePromises = pendingOrder.orderItems.map(async (item: any) => {
+        // Skip stock update for items without a product ID (samples)
+        if (!item.product) {
+          console.log(`[API /api/order/verify-cod] Skipping stock update for item without product ID (likely a sample): ${item.name}`);
+          return;
+        }
+
         const product = await Product.findById(item.product).session(session);
         if (!product) {
           throw new Error(`Product ${item.product} (${item.name}) not found during stock update.`);

@@ -28,10 +28,10 @@ export async function generateDynamicMetadata({
 
     // Fallback settings if none found
     const defaultSettings = {
-      siteName: "Electrophilic",
-      siteDescription: "Welcome to Electrophilic.in – Where Innovation Begins!",
+      siteName: "E-Commerce",
+      siteDescription: "Welcome to E-Commerce - Electronics Components Store",
       siteKeywords: ["electronics", "components", "microcontrollers"],
-      defaultTitle: "Electrophilic - Electronics Components Store",
+      defaultTitle: "E-Commerce - Electronics Components Store",
       titleSeparator: " | ",
       ogType: "website",
       twitterCard: "summary_large_image" as const,
@@ -117,8 +117,8 @@ export async function generateDynamicMetadata({
     
     // Return fallback metadata
     return {
-      title: title ? `${title} | Electrophilic` : "Electrophilic - Electronics Components Store",
-      description: description || "Welcome to Electrophilic.in – Where Innovation Begins!",
+      title: title ? `${title} | E-Commerce` : "E-Commerce - Electronics Components Store",
+      description: description || "Welcome to E-Commerce - Electronics Components Store",
     };
   }
 }

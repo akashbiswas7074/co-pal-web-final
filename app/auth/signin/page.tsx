@@ -67,7 +67,7 @@ function SignInFormContent() {
 
       if (result?.error) {
         console.error("Sign-in error:", result.error);
-        
+
         // If error is UseGoogleLogin or OAuthAccountNotLinked, automatically redirect to Google signin
         if (result.error === "UseGoogleLogin" || result.error === "OAuthAccountNotLinked") {
           toast.info('Redirecting to Google login...');
@@ -77,7 +77,7 @@ function SignInFormContent() {
           }, 500);
           return;
         }
-        
+
         setFormError(getErrorMessage(result.error));
         toast.error(getErrorMessage(result.error)); // Show toast notification
       } else if (result?.ok && result.url) {
@@ -101,12 +101,12 @@ function SignInFormContent() {
   const handleGoogleSignIn = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setIsLoading(true);
-    
+
     try {
       toast.info('Redirecting to Google sign-in...');
-      await signIn('google', { 
+      await signIn('google', {
         callbackUrl,
-        redirect: false 
+        redirect: false
       });
       // Note: The actual redirect will be handled by NextAuth
     } catch (error) {
@@ -118,37 +118,33 @@ function SignInFormContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-gray-900" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div className="flex flex-col lg:flex-row w-full min-h-[calc(100vh-64px)] relative z-10">
 
       {/* Left column - Professional Image Background section */}
-      <div 
+      <div
         className="hidden lg:flex relative overflow-hidden"
         style={{
           width: '50%',
           minHeight: '100vh',
         }}
       >
-        {/* Fixed background image - sticks to left half of screen */}
+        {/* CSS background image instead of fixed div */}
         <div
-          className="fixed inset-0"
+          className="absolute inset-0"
           style={{
-            width: '50vw',
-            height: '100vh',
-            left: 0,
-            top: 0,
-            backgroundImage: `url('https://res.cloudinary.com/dgfk4nqhf/image/upload/v1767465033/image_ty1t8h.png')`,
+            backgroundImage: `url('${logo?.authBackgroundUrl || "https://res.cloudinary.com/dgfk4nqhf/image/upload/v1767465033/image_ty1t8h.png"}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
             zIndex: 0,
           }}
         ></div>
-        
+
         {/* Professional overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/75 z-10"></div>
-        
+
         {/* Seamless blend attaching both sections - positioned at right edge */}
-        <div 
+        <div
           className="absolute top-0 bottom-0 right-0 pointer-events-none z-20"
           style={{
             width: '350px',
@@ -157,21 +153,21 @@ function SignInFormContent() {
             WebkitBackdropFilter: 'blur(5px)',
           }}
         ></div>
-        
+
         {/* Content */}
         <div className="relative z-50 flex flex-col justify-center px-8 xl:px-16 py-12 xl:py-20 text-white h-full">
           <div className="max-w-lg">
             {/* Logo */}
-            <div className="flex items-center mb-6 xl:mb-8">
-              <Image 
-                src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"} 
-                alt={logo?.altText || "Company Logo"} 
-                width={200} 
+            <div className="flex items-center mb-6 xl:mb-8 -ml-3 xl:-ml-4">
+              <Image
+                src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"}
+                alt={logo?.altText || "Company Logo"}
+                width={200}
                 height={60}
-                className="drop-shadow-lg w-auto h-auto max-w-[180px] xl:max-w-[200px]"
+                className="drop-shadow-lg w-auto h-auto max-w-[180px] xl:max-w-[200px] object-contain object-left"
               />
             </div>
-            
+
             <h1 className="text-3xl sm:text-4xl xl:text-5xl font-bold mb-4 xl:mb-6 text-white tracking-tight">
               Welcome Back to {logo?.name || "VibeCart"}!
             </h1>
@@ -183,20 +179,20 @@ function SignInFormContent() {
       </div>
 
       {/* Right column - Professional Form section */}
-      <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900" style={{ minHeight: '100vh' }}>
+      <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900">
         <div className="w-full max-w-lg">
           {/* Mobile logo section */}
           <div className="text-center mb-6 sm:mb-8 lg:hidden">
-            <Image 
-              src={logo?.logoUrl || "/logo.png"} 
-              alt={logo?.altText || "Company Logo"} 
-              width={160} 
+            <Image
+              src={logo?.logoUrl || "/logo.png"}
+              alt={logo?.altText || "Company Logo"}
+              width={160}
               height={50}
               className="mx-auto mb-3 sm:mb-4 drop-shadow-md w-auto h-auto max-w-[140px] sm:max-w-[160px]"
             />
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Welcome Back to {logo?.name || "VibeCart"}!</h1>
           </div>
-          
+
           <Card className="border-0 shadow-xl sm:shadow-2xl bg-white dark:bg-gray-800 relative overflow-hidden">
             <CardHeader className="space-y-2 sm:space-y-3 text-center pb-6 sm:pb-8 pt-6 sm:pt-8 lg:pt-10 px-4 sm:px-6 lg:px-8">
               <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -206,7 +202,7 @@ function SignInFormContent() {
                 Enter your credentials to access your account
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="px-4 sm:px-6 lg:px-8">
               <Tabs defaultValue={initialTab === 'phone' ? 'phone' : 'email'}>
                 <TabsList className="grid grid-cols-2 mb-4 sm:mb-6 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
@@ -219,7 +215,7 @@ function SignInFormContent() {
                     <span className="font-medium">Phone</span>
                   </TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="email" className="space-y-4 sm:space-y-6">
                   <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                     {formError && (
@@ -234,7 +230,7 @@ function SignInFormContent() {
                         <span className="break-words">{successMessage}</span>
                       </div>
                     )}
-                    
+
                     <div className="space-y-3 sm:space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="email" className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -254,14 +250,14 @@ function SignInFormContent() {
                           />
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <div className="flex items-center justify-between flex-wrap gap-1">
                           <Label htmlFor="password" className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
                             Password
                           </Label>
-                          <Link 
-                            href="/auth/forgot-password" 
+                          <Link
+                            href="/auth/forgot-password"
                             className="text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                           >
                             Forgot Password?
@@ -290,10 +286,10 @@ function SignInFormContent() {
                         </div>
                       </div>
                     </div>
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 sm:h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]" 
+
+                    <Button
+                      type="submit"
+                      className="w-full h-12 sm:h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                       disabled={isLoading}
                     >
                       {isLoading ? (
@@ -349,18 +345,18 @@ function SignInFormContent() {
                     </div>
                   </Button>
                 </TabsContent>
-                
+
                 <TabsContent value="phone">
                   <PhoneLoginForm redirectUrl={callbackUrl} />
                 </TabsContent>
               </Tabs>
             </CardContent>
-            
+
             <CardFooter className="flex justify-center border-t border-gray-200 dark:border-gray-700 pt-6 sm:pt-8 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8">
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center">
                 Don't have an account?{' '}
-                <Link 
-                  href="/auth/signup" 
+                <Link
+                  href="/auth/signup"
                   className="font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 transition-colors hover:underline"
                 >
                   Create Account
@@ -368,7 +364,7 @@ function SignInFormContent() {
               </p>
             </CardFooter>
           </Card>
-          
+
           <p className="text-center text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-6 sm:mt-8 leading-relaxed px-4">
             By signing in, you agree to our{' '}
             <Link href="/terms" className="text-gray-600 dark:text-gray-400 hover:underline">Terms of Service</Link> and{' '}

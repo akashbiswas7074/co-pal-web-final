@@ -11,7 +11,7 @@ import HeroSection from "../models/hero-section.model";
 export async function initializeDefaultSections() {
   try {
     await connectToDatabase();
-    
+
     // Define the default sections that should be available
     const defaultSections = [
       {
@@ -36,6 +36,13 @@ export async function initializeDefaultSections() {
         description: "Dynamically configured hero sections (all active ones)"
       },
       {
+        name: "Featured Collection",
+        sectionId: "featured-products",
+        isVisible: true,
+        order: 28,
+        description: "Tabs for Best Sellers and New Arrivals"
+      },
+      {
         name: "Featured Showcase",
         sectionId: "featured-showcase",
         isVisible: true,
@@ -55,6 +62,20 @@ export async function initializeDefaultSections() {
         isVisible: true,
         order: 50,
         description: "Showcase for product categories"
+      },
+      {
+        name: "Shop By Categories",
+        sectionId: "shop-by-categories",
+        isVisible: true,
+        order: 55,
+        description: "Premium branded carousel for shopping by categories"
+      },
+      {
+        name: "Gender Section",
+        sectionId: "gender-section",
+        isVisible: true,
+        order: 45,
+        description: "High-end display for Men, Women and Unisex categories"
       },
       {
         name: "Sub-Category Showcase",
@@ -106,29 +127,50 @@ export async function initializeDefaultSections() {
         description: "Section showcasing featured videos"
       },
       {
+        name: "Featured Review Hero",
+        sectionId: "featured-review-hero",
+        isVisible: true,
+        order: 115,
+        description: "Large quote and review section with star ratings"
+      },
+      {
+        name: "Recent Blogs",
+        sectionId: "recent-blogs",
+        isVisible: true,
+        order: 125,
+        description: "Grid display of recent blog posts"
+      },
+      {
+        name: "Influencer Spotlight",
+        sectionId: "influencer-spotlight",
+        isVisible: true,
+        order: 135,
+        description: "Section showcasing influencer content and social proof"
+      },
+      {
         name: "All Products",
         sectionId: "all-products",
         isVisible: true,
-        order: 130,
+        order: 140,
         description: "Section displaying all products"
       }
     ];
-    
+
     // For each default section, check if it exists and create if it doesn't
     for (const section of defaultSections) {
-      const exists = await WebsiteSection.findOne({ 
-        sectionId: section.sectionId 
+      const exists = await WebsiteSection.findOne({
+        sectionId: section.sectionId
       });
-      
+
       if (!exists) {
         await WebsiteSection.create(section);
         console.log(`Created default section: ${section.name}`);
       }
     }
-    
+
     // After creating default sections, check for hero sections and create website sections for them
     await syncHeroSectionsToWebsiteSections();
-    
+
     return {
       success: true,
       message: "Default website sections initialized successfully",
@@ -149,18 +191,18 @@ export async function initializeDefaultSections() {
 export async function syncHeroSectionsToWebsiteSections() {
   try {
     await connectToDatabase();
-    
+
     // Get all hero sections
     const heroSections = await HeroSection.find();
-    
+
     // For each hero section, create a corresponding website section if it doesn't exist
     for (const heroSection of heroSections) {
       // Create a unique section ID for the hero section
       const sectionId = `dynamic-hero-section-${heroSection._id}`;
-      
+
       // Check if this section already exists
       const exists = await WebsiteSection.findOne({ sectionId });
-      
+
       // If it doesn't exist, create it
       if (!exists) {
         await WebsiteSection.create({
@@ -180,7 +222,7 @@ export async function syncHeroSectionsToWebsiteSections() {
         });
       }
     }
-    
+
     return {
       success: true,
       message: "Hero sections synced to website sections successfully",

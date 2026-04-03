@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 export function generateMetadata(): Metadata {
   return {
-    title: 'Electrophilic',
-    description: 'Welcome to Electrophilic.in – Where Innovation Begins! Step into the world of electronics with the ultimate destination for makers, tinkerers, and tech enthusiasts.',
+    title: "E-Commerce",
+    description: "Welcome to E-Commerce - Electronics Components Store",
   };
 }

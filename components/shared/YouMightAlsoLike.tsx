@@ -28,7 +28,9 @@ interface Product {
   createdAt?: string | Date;
   orderCount?: number;
   sold?: number;
-  stock?: number;
+  subProducts?: any[];
+  images?: any[];
+  secondaryImage?: string | null;
 }
 
 interface YouMightAlsoLikeProps {
@@ -148,6 +150,13 @@ const YouMightAlsoLike: React.FC<YouMightAlsoLikeProps> = ({
               name: product.name,
               category: product.category?.name || product.category || "Unknown",
               image: imageUrl,
+              secondaryImage: (Array.isArray(product.images) && product.images.length > 1)
+                ? (typeof product.images[1] === 'string' ? product.images[1] : (product.images[1]?.url || null))
+                : (Array.isArray(product.subProducts?.[0]?.images) && product.subProducts[0].images.length > 1)
+                  ? (typeof product.subProducts[0].images[1] === 'string' ? product.subProducts[0].images[1] : (product.subProducts[0].images[1]?.url || null))
+                  : null,
+              subProducts: JSON.parse(JSON.stringify(product.subProducts || [])),
+              images: Array.isArray(product.images) ? product.images : [],
               // Only set rating if the product has reviews
               rating: (product.numReviews || product.reviews) ? product.rating : 0,
               slug: product.slug,

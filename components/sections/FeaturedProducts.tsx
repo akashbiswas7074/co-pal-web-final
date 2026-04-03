@@ -1,4 +1,4 @@
-import ProductCard from '../shared/ProductCard';
+import { ProductCardSmall } from '@/components/shared/product/ProductCardSmall';
 
 export default function FeaturedProducts() {
   const featuredProducts = [
@@ -21,10 +21,10 @@ export default function FeaturedProducts() {
             Discover our handpicked selection of premium footwear, featuring the latest trends and timeless classics.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {featuredProducts.map((product: any) => (
+            <ProductCardSmall key={product.id} product={product} />
           ))}
         </div>
       </div>

@@ -3,9 +3,6 @@ import mongoose, { Mongoose } from "mongoose";
 // Import the centralized model index to ensure all models are registered
 import "./models";
 
-// Use MONGODB_URI instead of MONGODB_URL to match .env.local
-const MONGODB_URI = process.env.MONGODB_URI;
-
 interface MongooseConnection {
   conn: Mongoose | null;
   promise: Promise<Mongoose> | null;
@@ -21,9 +18,10 @@ if (!cached) {
 }
 
 export const connectToDatabase = async () => {
+  const MONGODB_URI = process.env.MONGODB_URI;
   try {
     if (cached.conn) return cached.conn;
-    
+
     if (!MONGODB_URI) {
       console.error("No MongoDB URI found in environment variables");
       throw new Error(
@@ -46,7 +44,7 @@ export const connectToDatabase = async () => {
     return cached.conn;
   } catch (error) {
     cached.promise = null; // Reset promise on error
-    
+
     if (error instanceof Error) {
       if (error.message.includes("bad auth")) {
         throw new Error("MongoDB authentication failed. Check your username and password.");
@@ -55,7 +53,7 @@ export const connectToDatabase = async () => {
         throw new Error("MongoDB host not found. Check your connection string.");
       }
     }
-    
+
     throw error; // Re-throw the original error for other cases
   }
 };

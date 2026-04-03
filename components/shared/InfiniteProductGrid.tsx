@@ -13,6 +13,8 @@ interface TransformedProduct {
   originalPrice: number;
   discount?: number;
   image: string;
+  secondaryImage?: string | null;
+  subProducts?: any[];
   images: any[];
   slug: string;
   category?: string;

@@ -5,7 +5,7 @@ import { useForm } from "@mantine/form";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader, Check, X, Plus, Trash2, AlertCircle } from "lucide-react";
+import { Loader, Check, X, Plus, Trash2, AlertCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useCartStore } from "@/store/cart";
-import { applyCoupon } from "@/lib/database/actions/user.actions";
-import { getUserById } from "@/lib/database/actions/user.actions";
+import { applyCoupon, getUserById } from "@/lib/database/actions/user.actions";
+import { redeemLoyaltyPoints } from "@/lib/database/actions/order.actions";
 import { getSavedCartForUser } from "@/lib/database/actions/cart.actions";
 import { calculateDelhiveryShipping } from "@/lib/utils/shipping";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
@@ -64,7 +64,7 @@ interface UserData {
   phone?: string; // Keep phone if it's a separate field in UserData
   username?: string; // Added username as it's returned by getUserById
   image?: string; // Added image
-  // Add other relevant user fields like provider, emailVerified if needed
+  loyaltyPoints?: number; // Added loyaltyPoints
 }
 
 // Define CheckoutData interface matching the backend
@@ -113,6 +113,9 @@ export default function CheckoutComponent() {
   const [placeOrderLoading, setPlaceOrderLoading] = useState<boolean>(false);
   const [addAddressLoading, setAddAddressLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+  const [pointsDiscount, setPointsDiscount] = useState<number>(0);
+  const [isRedeemingPoints, setIsRedeemingPoints] = useState(false);
 
   // GST-related states
   const [isGstInvoice, setIsGstInvoice] = useState(false);
@@ -218,6 +221,7 @@ export default function CheckoutComponent() {
             phone: userDataFromAction.phone || '',
             username: userDataFromAction.username || '',
             image: userDataFromAction.image || session?.user?.image || '',
+            loyaltyPoints: userDataFromAction.loyaltyPoints || 0,
           };
 
           setUser(processedUserData); // Set the processed user state
@@ -588,7 +592,7 @@ export default function CheckoutComponent() {
   const subtotalAfterCoupon = subTotal - (discount > 0 ? (subTotal * (discount / 100)) : 0);
   const gstAmount = (subtotalAfterCoupon * 0.18);
   const totalBeforeCoupon = subTotal - totalSaved + shippingCost + taxCost + gstAmount;
-  const finalTotal = totalAfterDiscount !== null ? (totalAfterDiscount + gstAmount) : totalBeforeCoupon;
+  const finalTotal = totalAfterDiscount !== null ? (totalAfterDiscount + gstAmount) : (totalBeforeCoupon - pointsDiscount);
 
   // --- Button State Logic ---
   const isAddressStepValid = step === 1 && !!selectedAddressId;
@@ -721,21 +725,28 @@ export default function CheckoutComponent() {
             originalPrice = item.product.price;
           }
         }
-        // Ultimate fallback to current price if no discount info available
+        // Fallback to current price
         else {
           originalPrice = item.price || 0;
         }
 
+        // Correctly identify if the item is a sample
+        const isSample = !!item.sample || !!item.isSample;
+
+        // For regular products, use item.product or item._id as fallback
+        // For samples, item.product might exist (parent product) but we don't want to use it as the main product ID for validation if it's missing from DB
+        const productId = isSample ? (item.product || null) : (typeof item.product === 'object' ? item.product._id : (item.product || item._id));
+        
         return {
-          product: typeof item.product === 'object' ? item.product._id : item.product, // Extract _id if product is an object
+          product: productId,
           name: item.name,
-          qty: Number(item.quantity || item.qty || 0), // Ensure quantity is a number
-          quantity: Number(item.quantity || item.qty || 0), // Include both fields for compatibility
-          price: item.price, // Selling price
-          originalPrice: originalPrice, // Enhanced original price calculation
-          size: item.size,
-          image: item.image
-          // Do NOT spread the whole item object (...item)
+          qty: Number(item.quantity || item.qty || 0),
+          quantity: Number(item.quantity || item.qty || 0),
+          image: item.image,
+          price: item.price,
+          originalPrice: originalPrice,
+          isSample: isSample,
+          sample: item.sample
         };
       }),
       itemsPrice: itemTotal,
@@ -993,6 +1004,40 @@ export default function CheckoutComponent() {
 
   // --- Address Management Handlers ---
 
+  const handleRedeemPoints = async () => {
+    if (pointsToRedeem <= 0) {
+      toast.error("Please enter a valid amount of points to redeem.");
+      return;
+    }
+    if (!user?._id) {
+      toast.error("User not found. Please refresh.");
+      return;
+    }
+
+    setIsRedeemingPoints(true);
+    try {
+      const res = await redeemLoyaltyPoints(pointsToRedeem, user._id);
+      if (res.success) {
+        setPointsDiscount(res.discountAmount ?? 0);
+        // If a coupon was already applied, the backend totalAfterDiscount includes it
+        // If no coupon, it's just the cart total minus points discount
+        if (res.totalAfterDiscount !== undefined) {
+          setTotalAfterDiscount(Number(res.totalAfterDiscount));
+        }
+        toast.success(res.message);
+        // Update user points in local state
+        setUser(prev => prev ? { ...prev, loyaltyPoints: res.remainingPoints ?? prev.loyaltyPoints } : null);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (error) {
+      console.error("Redeem points error:", error);
+      toast.error("Failed to redeem points");
+    } finally {
+      setIsRedeemingPoints(false);
+    }
+  };
+
   const handleAddressSelect = (addressId: string) => {
     const selected = userAddresses.find(addr => addr._id === addressId);
     if (selected) {
@@ -1128,7 +1173,7 @@ export default function CheckoutComponent() {
       const updatedAddresses = userAddresses
         .filter(addr => addr._id !== newlySavedAddress._id) // Remove if existing
         .map(addr => ({ ...addr, isDefault: false })); // Mark all others as non-default
-      
+
       // Ensure isDefault is always a boolean (new address is always default)
       updatedAddresses.push({ ...newlySavedAddress, isDefault: newlySavedAddress.isDefault ?? true });
       setUserAddresses(updatedAddresses);
@@ -1313,9 +1358,6 @@ export default function CheckoutComponent() {
 
         {/* Left Side: Steps */}
         <div className="w-full lg:w-2/3">
-          {/* Step Indicator (Optional but helpful) */}
-          {/* ... Add a visual step indicator if desired ... */}
-
           {/* Step 1: Delivery Address */}
           <div className={`p-6 border rounded-lg mb-6 transition-all duration-300 ${isActiveStep(1) ? 'bg-white shadow-md' : 'bg-gray-50 opacity-80'}`}>
             <div className="flex justify-between items-center mb-4">
@@ -1534,7 +1576,6 @@ export default function CheckoutComponent() {
                         id="isDefault"
                         checked={form.values.isDefault}
                         onCheckedChange={(checked) => {
-                          // Handle CheckedState type: treat indeterminate as false
                           const newValue = checked === true;
                           form.setFieldValue('isDefault', newValue);
                         }}
@@ -1569,7 +1610,7 @@ export default function CheckoutComponent() {
                 )}
 
                 {/* Proceed Button */}
-                {address && !showAddressForm && ( // Only show proceed if an address is selected and form is not open
+                {address && !showAddressForm && (
                   <div className="mt-6 text-right">
                     <Button onClick={nextStep} size="lg" disabled={!selectedAddressId} className="hover:bg-gray-800">
                       Use This Address & Proceed
@@ -1675,12 +1716,10 @@ export default function CheckoutComponent() {
                 {isStepCompleted(3) ? <Check className="h-6 w-6" /> : <span className="font-bold text-primary">3.</span>}
                 Payment Method
               </h2>
-              {/* No change button needed here as final button is in summary */}
             </div>
             {isActiveStep(3) && (
               <div className="mt-4 space-y-4">
                 <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange} className="space-y-3">
-                  {/* COD Option */}
                   <Label htmlFor="cod" className={`flex items-center p-4 border rounded-md cursor-pointer transition-colors hover:border-gray-400 ${paymentMethod === 'cod' ? 'border-gray-500 bg-gray-50 ring-1 ring-gray-500' : 'border-gray-200'}`}>
                     <RadioGroupItem value="cod" id="cod" />
                     <div className="ml-3">
@@ -1693,7 +1732,6 @@ export default function CheckoutComponent() {
                       )}
                     </div>
                   </Label>
-                  {/* Razorpay Option */}
                   <Label htmlFor="razorpay" className={`flex items-center p-4 border rounded-md cursor-pointer transition-colors hover:border-gray-400 ${paymentMethod === 'razorpay' ? 'border-gray-500 bg-gray-50 ring-1 ring-gray-500' : 'border-gray-200'}`}>
                     <RadioGroupItem value="razorpay" id="razorpay" />
                     <div className="ml-3">
@@ -1703,8 +1741,7 @@ export default function CheckoutComponent() {
                   </Label>
                 </RadioGroup>
                 <div className="flex justify-between mt-6">
-                  <Button variant="outline" onClick={prevStep} className="hover:bg-gray-100 hover:text-gray-900">Back to Coupon</Button>
-                  {/* Final Place Order button is in the summary section */}
+                  <Button variant="outline" onClick={prevStep} className="hover:bg-gray-100 hover:text-gray-900">Back to Options</Button>
                 </div>
               </div>
             )}
@@ -1720,19 +1757,14 @@ export default function CheckoutComponent() {
             {/* Order Summary Items */}
             <div className="space-y-3">
               {cartItems.map((item) => (
-                <div key={item._uid || item._id} className="flex justify-between items-start text-sm"> {/* Use _id for key fallback if _uid is missing */}
+                <div key={item._uid || item._id} className="flex justify-between items-start text-sm">
                   <div className="flex items-start gap-3">
-                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />\n
+                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
                     <div>
                       <p className="font-medium text-gray-800 line-clamp-1">{item.name}</p>
                       <p className="text-xs text-muted-foreground">Qty: {item.quantity || item.qty}</p>
-                      {/* Correctly display Product ID using _id */}
                       <p className="text-xs text-muted-foreground">ID: {item._id}</p>
-                      {(item.size) && (
-                        <p className="text-xs text-muted-foreground">
-                          {item.size}
-                        </p>
-                      )}
+                      {item.size && <p className="text-xs text-muted-foreground">{item.size}</p>}
                     </div>
                   </div>
                   <div className="text-right">
@@ -1745,9 +1777,39 @@ export default function CheckoutComponent() {
               ))}
             </div>
 
+            {/* Loyalty Points Redemption */}
+            {user && user.loyaltyPoints !== undefined && user.loyaltyPoints > 0 && (
+              <div className="mt-6 pt-4 border-t border-dashed">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                    Dua Points Balance: {user.loyaltyPoints}
+                  </h3>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="number"
+                    placeholder="Points to redeem"
+                    value={pointsToRedeem || ""}
+                    onChange={(e) => setPointsToRedeem(Number(e.target.value))}
+                    max={user.loyaltyPoints}
+                    className="h-9 text-sm"
+                  />
+                  <Button
+                    onClick={handleRedeemPoints}
+                    disabled={isRedeemingPoints || !pointsToRedeem || pointsToRedeem > user.loyaltyPoints}
+                    size="sm"
+                    className="h-9 bg-yellow-600 hover:bg-yellow-700 text-white"
+                  >
+                    {isRedeemingPoints ? <Loader className="animate-spin h-3 w-3" /> : "Redeem"}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">10 points = ₹1 discount</p>
+              </div>
+            )}
+
             {/* Price Breakdown */}
             <div className="space-y-2 border-t pt-4">
-              {/* Shipping Calculation Status */}
               {isCalculatingShipping && (
                 <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mb-4">
                   <div className="flex items-center text-blue-700">
@@ -1757,7 +1819,6 @@ export default function CheckoutComponent() {
                 </div>
               )}
 
-              {/* Shipping Error */}
               {shippingError && (
                 <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mb-4">
                   <div className="flex items-center text-yellow-700">
@@ -1783,9 +1844,6 @@ export default function CheckoutComponent() {
                 </span>
                 <span className={shippingCost === 0 ? "text-green-600 font-medium" : ""}>
                   {displayShipping}
-                  {paymentMethod === 'cod' && shippingCost > 0 && (
-                    <span className="text-xs text-muted-foreground ml-1">(includes COD charges)</span>
-                  )}
                 </span>
               </div>
               {taxCost > 0 && (
@@ -1794,24 +1852,29 @@ export default function CheckoutComponent() {
                   <span>₹ {taxCost.toFixed(2)}</span>
                 </div>
               )}
+              {pointsDiscount > 0 && (
+                <div className="flex justify-between text-sm text-yellow-600 font-medium">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Star className="h-3 w-3 fill-yellow-600" />
+                    Points Discount:
+                  </span>
+                  <span>- ₹ {pointsDiscount.toFixed(2)}</span>
+                </div>
+              )}
               {gstAmount > 0 && (
                 <>
-                  <div className="flex justify-between text-sm animate-in fade-in slide-in-from-top-1 duration-300">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">GST (18%):</span>
                     <span>₹ {gstAmount.toFixed(2)}</span>
-                  </div>
-                  {/* Visual breakdown for user confidence */}
-                  <div className="flex justify-between text-[10px] text-muted-foreground pl-4">
-                    <span>(CGST 9% + SGST 9%) Or (IGST 18%)</span>
                   </div>
                 </>
               )}
 
               {/* Coupon Discount Display */}
-              {discount > 0 && totalAfterDiscount !== null && (
+              {discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600 bg-green-50 p-1.5 rounded">
                   <span className="font-medium">Coupon ({coupon}):</span>
-                  <span className="font-medium">- ₹ {(totalBeforeCoupon - finalTotal).toFixed(2)} ({discount}%)</span>
+                  <span className="font-medium">- ₹ {(subTotal * (discount / 100)).toFixed(2)}</span>
                 </div>
               )}
 
@@ -1834,8 +1897,6 @@ export default function CheckoutComponent() {
                   destinationPincode={address.zipCode}
                   paymentMethod={paymentMethod}
                 />
-
-                {/* Expected Delivery Information */}
                 <ExpectedDeliverySimple
                   destination_pin={address.zipCode}
                   className="mt-3"
@@ -1843,7 +1904,7 @@ export default function CheckoutComponent() {
               </div>
             )}
 
-            {/* Checkout Error Display Area */}
+            {/* Checkout Error */}
             {checkoutError && (
               <Alert variant="destructive" className="mt-5">
                 <AlertCircle className="h-4 w-4" />
@@ -1854,7 +1915,7 @@ export default function CheckoutComponent() {
               </Alert>
             )}
 
-            {/* Place Order Button - Visible only on Payment Step */}
+            {/* Place Order Button */}
             {isActiveStep(3) && (
               <Button
                 onClick={placeOrderHandler}
@@ -1862,22 +1923,13 @@ export default function CheckoutComponent() {
                 disabled={placeOrderButtonDisabled}
                 size="lg"
               >
-                {placeOrderLoading ? (
-                  <Loader className="animate-spin mr-2 h-5 w-5" />
-                ) : null}
+                {placeOrderLoading ? <Loader className="animate-spin mr-2 h-5 w-5" /> : null}
                 {placeOrderButtonText()}
               </Button>
             )}
-            {/* Info text if button is disabled due to error */}
-            {isActiveStep(3) && checkoutError && !placeOrderLoading && (
-              <p className="text-xs text-center text-destructive mt-2">Please resolve the error above before proceeding.</p>
-            )}
-
-          </div> {/* End Summary Inner Padding */}
-
-        </div> {/* End Right Side */}
-
-      </div> {/* End Flex Container */}
-    </div> // End Container
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

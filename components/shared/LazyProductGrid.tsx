@@ -3,7 +3,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import LazyLoad from './LazyLoad';
-import ProductCard from './ProductCard'; // Fixed to use default import
+import { ProductCardSmall } from './product/ProductCardSmall';
 
 interface LazyProductGridProps {
   products: any[];
@@ -42,7 +42,7 @@ const LazyProductGrid: React.FC<LazyProductGridProps> = ({
           loadingAnimation="skeleton"
           className={cn("product-card-container", productClassName)}
         >
-          <ProductCard product={product} />
+          <ProductCardSmall product={product} />
         </LazyLoad>
       ))}
     </div>

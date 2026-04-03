@@ -52,6 +52,7 @@ const QuickView = ({ product, children }: QuickViewProps) => {
       price: product.price,
       image: product.image,
       quantity: quantity,
+      product: product.id,
       size: selectedSize || undefined, // Only include size if one is selected
     });
   };

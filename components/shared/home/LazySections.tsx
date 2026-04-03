@@ -6,7 +6,7 @@ import LazyProductGrid from '@/components/shared/LazyProductGrid';
 import LazyLoad from '@/components/shared/LazyLoad';
 import BestSellingProducts from "@/components/sections/BestSellingProducts";
 import BannerCarousel from "@/components/shared/home/BannerCarousel";
-import StrengthTakesSweat from "@/components/shared/home/StrengthTakesSweat"; 
+import StrengthTakesSweat from "@/components/shared/home/StrengthTakesSweat";
 import FeaturedProducts from "@/components/shared/home/FeaturedProducts";
 import SpecialCombos from "@/components/shared/home/SpecialCombos";
 import DynamicHeroSection from "@/components/shared/home/DynamicHeroSection";
@@ -21,6 +21,12 @@ import BestsellingSection from "@/components/shared/home/BestsellingSection";
 import NewArrivalsSection from "@/components/shared/home/NewArrivalsSection";
 import FeaturedProductsSection from "@/components/shared/home/FeaturedProductsSection";
 import CrazyDeals from "@/components/shared/home/CrazyDeals";
+import FeaturedReviewHero from "@/components/shared/home/FeaturedReviewHero";
+import BlogGrid from "@/components/shared/home/BlogGrid";
+import InfluencerSpotlight from "@/components/shared/home/InfluencerSpotlight";
+import CollectionHighlightGrid from "@/components/shared/home/CollectionHighlightGrid";
+import ShopByCategories from "@/components/shared/home/ShopByCategories";
+import GenderSection from "@/components/shared/home/GenderSection";
 
 // Global state to track if banner has loaded
 let bannerHasLoaded = false;
@@ -43,7 +49,7 @@ const waitForBanner = (callback: () => void) => {
 
 // Enhanced Banner Carousel with immediate loading
 const LazyBannerCarousel = (props: any) => (
-  <BannerCarousel 
+  <BannerCarousel
     {...props}
     skipLazyLoad={true} // Load immediately, no lazy loading
     priority={true}
@@ -53,11 +59,11 @@ const LazyBannerCarousel = (props: any) => (
 );
 
 // Enhanced Lazy Section that waits for banner to load first
-const DelayedLazySection = ({ 
-  children, 
-  minHeight, 
-  loadingAnimation, 
-  className, 
+const DelayedLazySection = ({
+  children,
+  minHeight,
+  loadingAnimation,
+  className,
   priority = false,
   delayAfterBanner = true
 }: {
@@ -106,7 +112,7 @@ const DelayedLazySection = ({
   }
 
   return (
-    <LazySection 
+    <LazySection
       minHeight={minHeight}
       loadingAnimation={loadingAnimation}
       className={className}
@@ -119,7 +125,7 @@ const DelayedLazySection = ({
 
 // Lazy load these components with banner dependency
 const LazyBestSellingProducts = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={400}
     loadingAnimation="pulse"
     className="w-full py-12"
@@ -129,7 +135,7 @@ const LazyBestSellingProducts = (props: any) => (
 );
 
 const LazyFeaturedProducts = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={400}
     loadingAnimation="skeleton"
     className="w-full py-12"
@@ -139,7 +145,7 @@ const LazyFeaturedProducts = (props: any) => (
 );
 
 const LazyNewArrivals = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={400}
     loadingAnimation="skeleton"
     className="w-full py-12"
@@ -149,7 +155,7 @@ const LazyNewArrivals = (props: any) => (
 );
 
 const LazyCategoryShowcase = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={300}
     loadingAnimation="pulse"
     className="w-full py-8"
@@ -159,7 +165,7 @@ const LazyCategoryShowcase = (props: any) => (
 );
 
 const LazySpecialCombos = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={300}
     loadingAnimation="skeleton"
     className="w-full py-8"
@@ -169,7 +175,7 @@ const LazySpecialCombos = (props: any) => (
 );
 
 const LazyCrazyDeals = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={300}
     loadingAnimation="pulse"
     className="w-full py-8"
@@ -179,7 +185,7 @@ const LazyCrazyDeals = (props: any) => (
 );
 
 const LazyFeaturedShowcase = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={500}
     loadingAnimation="skeleton"
     className="w-full"
@@ -189,7 +195,7 @@ const LazyFeaturedShowcase = (props: any) => (
 );
 
 const LazyFeaturedVideoSection = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={400}
     loadingAnimation="pulse"
     className="w-full py-8"
@@ -199,7 +205,7 @@ const LazyFeaturedVideoSection = (props: any) => (
 );
 
 const LazySubCategoryShowcase = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={300}
     loadingAnimation="skeleton"
     className="w-full py-8"
@@ -209,7 +215,7 @@ const LazySubCategoryShowcase = (props: any) => (
 );
 
 const LazyCategoryProductSection = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={400}
     loadingAnimation="pulse"
     className="w-full py-8"
@@ -219,7 +225,7 @@ const LazyCategoryProductSection = (props: any) => (
 );
 
 const LazyAllProductsSection = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={400}
     loadingAnimation="skeleton"
     className="w-full py-8"
@@ -229,12 +235,72 @@ const LazyAllProductsSection = (props: any) => (
 );
 
 const LazyToughShoeHero = (props: any) => (
-  <DelayedLazySection 
+  <DelayedLazySection
     minHeight={300}
     loadingAnimation="fade"
     className="w-full"
   >
     <ToughShoeHero {...props} />
+  </DelayedLazySection>
+);
+
+const LazyFeaturedReviewHero = (props: any) => (
+  <DelayedLazySection
+    minHeight={500}
+    loadingAnimation="skeleton"
+    className="w-full"
+  >
+    <FeaturedReviewHero {...props} />
+  </DelayedLazySection>
+);
+
+const LazyBlogGrid = (props: any) => (
+  <DelayedLazySection
+    minHeight={600}
+    loadingAnimation="skeleton"
+    className="w-full py-12"
+  >
+    <BlogGrid {...props} />
+  </DelayedLazySection>
+);
+
+const LazyInfluencerSpotlight = (props: any) => (
+  <DelayedLazySection
+    minHeight={500}
+    loadingAnimation="pulse"
+    className="w-full py-12"
+  >
+    <InfluencerSpotlight {...props} />
+  </DelayedLazySection>
+);
+
+const LazyCollectionHighlightGrid = (props: any) => (
+  <DelayedLazySection
+    minHeight={600}
+    loadingAnimation="skeleton"
+    className="w-full"
+  >
+    <CollectionHighlightGrid {...props} />
+  </DelayedLazySection>
+);
+
+const LazyShopByCategories = (props: any) => (
+  <DelayedLazySection
+    minHeight={400}
+    loadingAnimation="pulse"
+    className="w-full"
+  >
+    <ShopByCategories {...props} />
+  </DelayedLazySection>
+);
+
+const LazyGenderSection = (props: any) => (
+  <DelayedLazySection
+    minHeight={600}
+    loadingAnimation="skeleton"
+    className="w-full"
+  >
+    <GenderSection {...props} />
   </DelayedLazySection>
 );
 
@@ -251,5 +317,11 @@ export {
   LazySubCategoryShowcase,
   LazyCategoryProductSection,
   LazyAllProductsSection,
-  LazyToughShoeHero
+  LazyToughShoeHero,
+  LazyFeaturedReviewHero,
+  LazyBlogGrid,
+  LazyInfluencerSpotlight,
+  LazyCollectionHighlightGrid,
+  LazyShopByCategories,
+  LazyGenderSection
 };

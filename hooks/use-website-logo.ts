@@ -10,6 +10,7 @@ interface WebsiteLogo {
   altText: string;
   isActive: boolean;
   mobileLogoUrl?: string;
+  authBackgroundUrl?: string;
 }
 
 interface UseWebsiteLogoResult {
@@ -26,7 +27,7 @@ interface UseWebsiteLogoResult {
 export function useWebsiteLogo(): UseWebsiteLogoResult {
   const siteConfig = useSiteConfig();
   const fetchInitiated = useRef(false);
-  
+
   // Initialize with fallback logo from the beginning to prevent flicker
   const [logo, setLogo] = useState<WebsiteLogo | null>(() => ({
     name: siteConfig.name,
@@ -34,7 +35,7 @@ export function useWebsiteLogo(): UseWebsiteLogoResult {
     altText: siteConfig.name,
     isActive: true,
   }));
-  
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +43,7 @@ export function useWebsiteLogo(): UseWebsiteLogoResult {
     if (fetchInitiated.current && !isLoading) setIsLoading(true);
     fetchInitiated.current = true;
     setError(null);
-    
+
     try {
       const response = await fetch("/api/website/logo", {
         cache: "no-store",
@@ -51,13 +52,13 @@ export function useWebsiteLogo(): UseWebsiteLogoResult {
           "Cache-Control": "no-cache"
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success && data.logo) {
         setLogo(data.logo);
       } else if (data.defaultLogo) {
@@ -75,7 +76,7 @@ export function useWebsiteLogo(): UseWebsiteLogoResult {
   useEffect(() => {
     // Skip if we've already initiated a fetch
     if (fetchInitiated.current) return;
-    
+
     fetchLogo();
   }, []);
 

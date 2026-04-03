@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -124,7 +125,7 @@ export default function Chatbot() {
       {/* Floating AI Chat Button - Bottom Right */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100] h-14 w-14 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 bg-gradient-to-br from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white border-2 border-white/10 hover:border-white/20 group"
+        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[100] h-14 w-14 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 bg-gradient-to-br from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white border-2 border-white/10 hover:border-white/20 group"
         aria-label="Open AI chatbot"
       >
         {isOpen ? (
@@ -175,9 +176,28 @@ export default function Chatbot() {
                         : "bg-gray-100 text-gray-900"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {message.content}
-                    </p>
+                    {message.role === "assistant" ? (
+                      <div className="text-sm break-words">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <span className="block mb-1 last:mb-0 text-gray-800">{children}</span>,
+                            strong: ({ children }) => <strong className="font-bold text-black">{children}</strong>,
+                            ul: ({ children }) => <ul className="list-disc ml-4 mb-1 text-gray-800">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal ml-4 mb-1 text-gray-800">{children}</ol>,
+                            li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                            a: ({ href, children }) => (
+                              <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{children}</a>
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap break-words">
+                        {message.content}
+                      </p>
+                    )}
                     <span className="text-xs opacity-70 mt-1 block">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",

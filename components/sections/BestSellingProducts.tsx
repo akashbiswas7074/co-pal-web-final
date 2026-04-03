@@ -107,6 +107,13 @@ export default function BestSellingProducts() {
         originalPrice: originalPrice,
         discount: discount,
         image: image,
+        secondaryImage: (Array.isArray(product.images) && product.images.length > 1)
+          ? (typeof product.images[1] === 'string' ? product.images[1] : (product.images[1]?.url || null))
+          : (Array.isArray(product.subProducts?.[0]?.images) && product.subProducts[0].images.length > 1)
+            ? (typeof product.subProducts[0].images[1] === 'string' ? product.subProducts[0].images[1] : (product.subProducts[0].images[1]?.url || null))
+            : null,
+        subProducts: JSON.parse(JSON.stringify(product.subProducts || [])),
+        images: Array.isArray(product.images) ? product.images : [],
         slug: product.slug,
         sold: soldCount,
         // Only show bestseller badge if not featured (featured takes priority)

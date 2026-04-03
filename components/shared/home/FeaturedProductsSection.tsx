@@ -23,6 +23,9 @@ interface Product {
   isFeatured: boolean;
   featured: boolean;
   stock?: number;
+  subProducts?: any[];
+  images?: any[];
+  secondaryImage?: string | null;
 }
 
 interface FeaturedProductsSectionProps {
@@ -103,6 +106,13 @@ const FeaturedProductsSection = ({
     ...product,
     isFeatured: true,
     featured: true,
+    secondaryImage: (Array.isArray(product.images) && product.images.length > 1)
+      ? (typeof product.images[1] === 'string' ? product.images[1] : (product.images[1]?.url || null))
+      : (Array.isArray(product.subProducts?.[0]?.images) && product.subProducts[0].images.length > 1)
+        ? (typeof product.subProducts[0].images[1] === 'string' ? product.subProducts[0].images[1] : (product.subProducts[0].images[1]?.url || null))
+        : null,
+    subProducts: JSON.parse(JSON.stringify(product.subProducts || [])),
+    images: Array.isArray(product.images) ? product.images : [],
     // Add badge priority for featured products
     badgePriority: 'featured'
   }));

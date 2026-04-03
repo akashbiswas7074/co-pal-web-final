@@ -152,9 +152,15 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
       return { success: false, message: "Cannot place order with an empty cart." };
     }
 
-    // --- Stock Check ---
+    // --- Separate sample items from regular product items ---
+    const regularItems = (cartItems as any[]).filter(item => !item.isSample);
+    const sampleItems = (cartItems as any[]).filter(item => item.isSample);
+
+    // --- Stock Check (regular items only) ---
     const productIds: string[] = [];
-    for (const item of cartItems as any[]) {
+    console.log(`[processCheckoutSteps] Filtering cartItems. Total items: ${cartItems.length}`);
+    for (const item of regularItems) {
+      console.log(`[processCheckoutSteps] Regular item: ${item.name}, Product ID: ${item.product}, isSample: ${item.isSample}`);
       // Ensure item.product exists and is a string (or can be converted)
       if (!item.product || typeof item.product.toString !== 'function') {
         console.error(`[processCheckoutSteps] Invalid or missing product ID for cart item:`, item);
@@ -164,7 +170,7 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
       productIds.push(item.product.toString());
     }
 
-    console.log(`[processCheckoutSteps] Attempting to fetch stock for Product IDs: ${JSON.stringify(productIds)}`);
+    console.log(`[processCheckoutSteps] Attempting to fetch stock from collection: ${Product.collection.name} for Product IDs: ${JSON.stringify(productIds)}`);
 
     // Fetch necessary fields including subProducts for stock check
     const productsInDb = await Product.find(
@@ -172,7 +178,12 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
       'name subProducts.sku subProducts.sizes _id' // Fetch necessary fields, ensure _id is fetched
     ).session(session).lean();
 
-    console.log(`[processCheckoutSteps] Found ${productsInDb.length} products in stock database matching query IDs.`);
+    console.log(`[processCheckoutSteps] Found ${productsInDb.length} products in database.`);
+    if (productsInDb.length > 0) {
+      console.log(`[processCheckoutSteps] Found IDs: ${JSON.stringify(productsInDb.map((p: any) => p._id.toString()))}`);
+    } else {
+      console.warn(`[processCheckoutSteps] NO products found for the provided IDs in collection ${Product.collection.name}`);
+    }
 
     // Verify all requested product IDs were found
     const foundProductIds = new Set(productsInDb.map(p => (p as any)._id.toString()));
@@ -196,90 +207,52 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
     const productDetailsMap = new Map(productsInDb.map((p) => [(p as any)._id.toString(), p]));
     console.log("[processCheckoutSteps] Fetched product details map created.");
 
-    // Process cart items and automatically assign sizes if missing
-    for (const item of cartItems as any[]) {
+    // Process regular items and automatically assign sizes if missing
+    for (const item of regularItems) {
       const productId = item.product.toString();
-      const productData = productDetailsMap.get(productId); // Rename to productData to avoid conflict
+      const productData = productDetailsMap.get(productId);
 
-      // If size is missing, try to assign a default size
       if (!item.size) {
         console.log(`[processCheckoutSteps] Size is undefined for Product ID: ${productId}`);
-
         if (productData && productData.subProducts && productData.subProducts.length > 0) {
           const subProduct = productData.subProducts[0];
           if (subProduct && subProduct.sizes && subProduct.sizes.length > 0) {
-            item.size = subProduct.sizes[0].size; // Automatically set to the first available size
+            item.size = subProduct.sizes[0].size;
             console.log(`[processCheckoutSteps] Automatically set size for ${item.name} to: ${item.size}`);
           } else {
-            console.error(`[processCheckoutSteps] No sizes available for Product ID: ${productId}`);
             await session.abortTransaction();
-            return {
-              success: false,
-              message: `No sizes available for product: ${item.name || productId}.`,
-              productId,
-              size: item.size
-            };
+            return { success: false, message: `No sizes available for product: ${item.name || productId}.`, productId, size: item.size };
           }
         } else {
-          console.error(`[processCheckoutSteps] Product details or subProducts not found for Product ID: ${productId}`);
           await session.abortTransaction();
-          return {
-            success: false,
-            message: `Product details not found for product: ${item.name || productId}.`,
-            productId,
-            size: item.size
-          };
+          return { success: false, message: `Product details not found for product: ${item.name || productId}.`, productId, size: item.size };
         }
       }
 
-      console.log(`[processCheckoutSteps] Processing item loop for Product ID: ${productId}, Size: ${item.size}`);
-      const productDetails = productDetailsMap.get(productId); // This is the conflicting declaration
+      const productDetails = productDetailsMap.get(productId);
       const requestedQty = (typeof item.quantity === 'number' && item.quantity > 0) ? item.quantity : ((typeof item.qty === 'number' && item.qty > 0) ? item.qty : 1);
       const productName = productDetails?.name || item.name || `Product ID ${productId}`;
-
-      // Find the specific size variant stock (assuming first subProduct)
       let availableStock: number | undefined = undefined;
       let sizeFound = false;
 
       if (productDetails && productDetails.subProducts && productDetails.subProducts.length > 0) {
-        // Assume the first subProduct is the relevant one
         const subProduct = productDetails.subProducts[0];
-
         if (subProduct && subProduct.sizes) {
           const sizeInfo = subProduct.sizes.find((s: any) => s.size === item.size);
-          if (sizeInfo) {
-            availableStock = sizeInfo.qty;
-            sizeFound = true;
-            console.log(`[processCheckoutSteps] Found matching size '${item.size}' for Product ID ${productId}. Available stock: ${availableStock}`);
-          } else {
-            console.log(`[processCheckoutSteps] Size '${item.size}' not found within the subProduct for Product ID ${productId}.`);
-          }
-        } else {
-          console.log(`[processCheckoutSteps] First subProduct or its sizes not found for Product ID ${productId}.`);
+          if (sizeInfo) { availableStock = sizeInfo.qty; sizeFound = true; }
         }
-      } else {
-        console.log(`[processCheckoutSteps] Product details or subProducts not found in map for Product ID ${productId}.`);
       }
 
-      console.log(`[processCheckoutSteps] Stock Check for \"${productName}\" (ID: ${productId}, Size: ${item.size}): Requested Qty = ${requestedQty}, Available Stock = ${availableStock ?? 'N/A'}`);
-
-      // Check if the specific size was found and if stock is sufficient
       if (!sizeFound || availableStock === undefined || availableStock < requestedQty) {
         const reason = !sizeFound ? `Size '${item.size}' not found` : `Insufficient stock (Requested: ${requestedQty}, Available: ${availableStock})`;
-        console.error(`[processCheckoutSteps] Stock check failed for "${productName}" (Size: ${item.size}). Reason: ${reason}`);
         await session.abortTransaction();
-        return {
-          success: false,
-          message: `Sorry, "${productName}" (Size: ${item.size}) is unavailable or has insufficient stock. ${reason}.`,
-          productId: productId,
-          size: item.size,
-        };
+        return { success: false, message: `Sorry, "${productName}" (Size: ${item.size}) is unavailable. ${reason}.`, productId, size: item.size };
       }
     }
-    console.log("[processCheckoutSteps] Stock check passed for all items.");
+    console.log("[processCheckoutSteps] Stock check passed for all regular items.");
 
-    // 3. Prepare Order Products
-    const orderProducts: any[] = cartItems.map((item: any) => {
+    // 3. Prepare Order Products (regular + sample items)
+    const regularOrderProducts: any[] = regularItems.map((item: any) => {
       const productId = item.product.toString();
       const productDetails = productDetailsMap.get(productId);
       const requestedQty = (typeof item.quantity === 'number' && item.quantity > 0) ? item.quantity : ((typeof item.qty === 'number' && item.qty > 0) ? item.qty : 1);
@@ -335,18 +308,36 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
         originalPrice: originalItemPrice, // Enhanced original price calculation
         size: item.size,
         image: item.image,
+        isSample: false,
       };
     });
 
+    // Build sample order products (no stock check, no product ObjectId required in order model)
+    const sampleOrderProducts: any[] = sampleItems.map((item: any) => {
+      const requestedQty = (typeof item.quantity === 'number' && item.quantity > 0) ? item.quantity : ((typeof item.qty === 'number' && item.qty > 0) ? item.qty : 1);
+      return {
+        product: item.product ? new mongoose.Types.ObjectId(item.product) : undefined,
+        sample: item.sample ? new mongoose.Types.ObjectId(item.sample) : undefined,
+        name: item.name,
+        quantity: requestedQty,
+        qty: requestedQty,
+        price: item.price,
+        originalPrice: item.price,
+        size: item.size || 'Sample',
+        image: item.image,
+        isSample: true,
+      };
+    });
+
+    // Merge regular and sample items
+    const orderProducts: any[] = [...regularOrderProducts, ...sampleOrderProducts];
+
     // Calculate totalOriginalItemsPrice
-    const totalOriginalItemsPrice = orderProducts.reduce((acc, item) => {
-      const price = item.originalPrice || 0; // Fallback to 0 if undefined
-      const quantity = item.quantity || 0; // Fallback to 0 if undefined
-      return acc + (price * quantity);
+    const totalOriginalItemsPrice = orderProducts.reduce((acc: number, item: any) => {
+      return acc + ((item.originalPrice || 0) * (item.quantity || 0));
     }, 0);
 
     console.log("[processCheckoutSteps] Calculated totalOriginalItemsPrice:", totalOriginalItemsPrice);
-
     console.log("[processCheckoutSteps] Prepared order products:", orderProducts.length);
 
     // 4. Create the Order object (within transaction)
@@ -500,6 +491,12 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
       // Fix: Use orderItems instead of products (which doesn't exist on savedOrder)
       const stockUpdatePromises = savedOrder!.orderItems.map(async (item: IOrderItem) => {
         try {
+          // Skip stock update for items without a product ID (samples)
+          if (!item.product) {
+            console.log(`[processCheckoutSteps] Skipping stock update for item without product ID (likely a sample): ${item.name}`);
+            return true;
+          }
+
           const product = await Product.findById(item.product).session(session);
           if (!product) {
             throw new Error(`Product ${item.product} not found during stock update.`);
@@ -671,8 +668,35 @@ export async function handlePaymentSuccess(orderId: string, paymentResult: any, 
       update_time: new Date().toISOString(),
     };
 
-    await order.save({ session });
+    order.save({ session });
     console.log(`[handlePaymentSuccess] Order ${orderId} updated to Paid and Processing.`);
+
+    // --- Loyalty Points Logic ---
+    try {
+      const buyer = await User.findById(order.user).session(session);
+      if (buyer) {
+        // 1. Award points to buyer (1 point per ₹10 spent)
+        const pointsEarned = Math.floor(order.totalAmount / 10);
+        buyer.loyaltyPoints = (buyer.loyaltyPoints || 0) + pointsEarned;
+
+        // 2. Referral logic: If first order and referredBy exists
+        const orderCount = await Order.countDocuments({ user: order.user, isPaid: true }).session(session);
+        if (orderCount === 1 && buyer.referredBy) {
+          const referrer = await User.findById(buyer.referredBy).session(session);
+          if (referrer) {
+            referrer.loyaltyPoints = (referrer.loyaltyPoints || 0) + 100; // 100 bonus points for referrer
+            await referrer.save({ session });
+            console.log(`[handlePaymentSuccess] Awarded 100 referral points to referrer ${referrer.email}`);
+          }
+        }
+
+        await buyer.save({ session });
+        console.log(`[handlePaymentSuccess] Awarded ${pointsEarned} points to buyer ${buyer.email}. Total: ${buyer.loyaltyPoints}`);
+      }
+    } catch (loyaltyError) {
+      console.error(`[handlePaymentSuccess] Error awarding loyalty points:`, loyaltyError);
+      // Don't fail the whole payment success because of loyalty points
+    }
 
     console.log(`[handlePaymentSuccess] Clearing cart for user ${order.user}...`);
     await Cart.deleteOne({ user: order.user }).session(session);
@@ -912,5 +936,51 @@ export async function batchSyncOrderItemStatusesWithProducts(): Promise<{ update
   } catch (err) {
     console.error('[batchSyncOrderItemStatusesWithProducts] Batch operation error:', err);
     throw err;
+  }
+}
+
+export async function redeemLoyaltyPoints(pointsToRedeem: number, userId: string) {
+  try {
+    await connectToDatabase();
+    const user = await User.findById(userId);
+    if (!user) {
+      return { success: false, message: "User not found" };
+    }
+
+    if ((user.loyaltyPoints || 0) < pointsToRedeem) {
+      return { success: false, message: "Insufficient loyalty points" };
+    }
+
+    const cart = await Cart.findOne({ user: userId });
+    if (!cart) {
+      return { success: false, message: "Cart not found" };
+    }
+
+    // Redemption ratio: 10 points = ₹1 
+    const discountAmount = pointsToRedeem / 10;
+
+    // Ensure discount doesn't exceed 50% of cart total
+    if (discountAmount > cart.cartTotal * 0.5) {
+      return { success: false, message: "Maximum redemption limit is 50% of cart total" };
+    }
+
+    const totalAfterDiscount = cart.cartTotal - (cart.totalAfterDiscount ? (cart.cartTotal - cart.totalAfterDiscount) : 0) - discountAmount;
+
+    await Cart.findOneAndUpdate({ user: userId }, { totalAfterDiscount });
+
+    // Deduct points from user
+    user.loyaltyPoints -= pointsToRedeem;
+    await user.save();
+
+    return {
+      success: true,
+      message: `Successfully redeemed ${pointsToRedeem} points for ₹${discountAmount} discount`,
+      discountAmount,
+      totalAfterDiscount: totalAfterDiscount.toFixed(2),
+      remainingPoints: user.loyaltyPoints
+    };
+  } catch (error) {
+    console.error("Redeem points error:", error);
+    return { success: false, message: "Error redeeming points" };
   }
 }

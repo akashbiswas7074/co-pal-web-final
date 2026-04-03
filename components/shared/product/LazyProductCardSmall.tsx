@@ -28,6 +28,7 @@ interface LazyProductCardSmallProps {
     subProducts?: any[];
     sizes?: any[] | null;
     description?: string;
+    secondaryImage?: string | null;
     _id?: string;
     _doc?: any;
   };

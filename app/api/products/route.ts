@@ -49,12 +49,19 @@ export async function GET(req: NextRequest) {
       // CRITICAL FIX: Preserve the featured property as is
       const featuredStatus = product.featured === true;
 
+      const firstSubProduct = product.subProducts?.[0];
+      const subProductImages = firstSubProduct?.images || [];
+      const primaryImage = subProductImages[0]?.url || "/placeholder.png";
+      const secondaryImage = subProductImages.length > 1 ? subProductImages[1]?.url : null;
+
       return {
         id: product._id.toString(),
         name: product.name,
         description: product.description,
         price: product.price,
-        images: product.images || [],
+        image: primaryImage,
+        secondaryImage: secondaryImage,
+        images: subProductImages,
         category: product.category,
         brand: product.brand,
         inStock: product.countInStock > 0,

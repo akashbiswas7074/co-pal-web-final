@@ -19,6 +19,9 @@ type CartItem = {
   color?: string; // Note: 'style' seems to be used more consistently later
   qty?: number; // This seems redundant with 'quantity', consider consolidating
   availableQty?: number; // Quantity available in stock
+  isSample?: boolean; // Identify if item is a sample
+  sample?: string; // Sample ID
+  product?: string; // MongoDB product ID (required by checkout)
 };
 
 type CartContextType = {

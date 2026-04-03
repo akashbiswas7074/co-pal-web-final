@@ -25,6 +25,14 @@ const reviewSchema = new mongoose.Schema({
     default: false,
     required: true,
   },
+  images: [{
+    url: String,
+    public_id: String
+  }],
+  videos: [{
+    url: String,
+    public_id: String
+  }],
 });
 const productSchema = new mongoose.Schema(
   {

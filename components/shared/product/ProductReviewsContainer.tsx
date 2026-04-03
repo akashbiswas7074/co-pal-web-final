@@ -11,10 +11,10 @@ interface ProductReviewsContainerProps {
   productImage: string;
 }
 
-export default function ProductReviewsContainer({ 
-  productId, 
-  productName, 
-  productImage 
+export default function ProductReviewsContainer({
+  productId,
+  productName,
+  productImage
 }: ProductReviewsContainerProps) {
   const [reviews, setReviews] = useState([]);
   const [userOrderItems, setUserOrderItems] = useState([]);
@@ -30,10 +30,10 @@ export default function ProductReviewsContainer({
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const response = await fetch(`/api/products/${productId}/reviews`);
         const data = await response.json();
-        
+
         if (data.success) {
           const reviewsData = data.reviews || [];
           setReviews(reviewsData);
@@ -58,11 +58,11 @@ export default function ProductReviewsContainer({
   useEffect(() => {
     async function fetchUserOrderItems() {
       if (!session?.user) return;
-      
+
       try {
         const response = await fetch(`/api/products/${productId}/user-order-items`);
         const data = await response.json();
-        
+
         if (data.success) {
           setUserOrderItems(data.userOrderItems || []);
         }
@@ -75,11 +75,6 @@ export default function ProductReviewsContainer({
       fetchUserOrderItems();
     }
   }, [productId, session]);
-
-  // If there are no reviews and we've finished loading, don't render anything
-  if (!isLoading && !hasReviews) {
-    return null;
-  }
 
   // While loading, show a placeholder
   if (isLoading) {
@@ -96,6 +91,12 @@ export default function ProductReviewsContainer({
         </div>
       </div>
     );
+  }
+
+  // Hide section if no reviews and user can't review (hasn't purchased)
+  // We only do this if it's not loading
+  if (!isLoading && reviews.length === 0 && userOrderItems.length === 0) {
+    return null;
   }
 
   // If there's an error, don't show anything

@@ -27,6 +27,8 @@ interface TransformedProduct {
   originalPrice: number;
   discount?: number;
   image: string;
+  secondaryImage?: string | null;
+  subProducts?: any[];
   images: any[];
   slug: string;
   category?: string;
@@ -223,6 +225,12 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       originalPrice: basePrice,
       discount: discountPercentage,
       image: getImageUrl(product),
+      secondaryImage: (Array.isArray(product.images) && product.images.length > 1)
+        ? (typeof product.images[1] === 'string' ? product.images[1] : (product.images[1]?.url || null))
+        : (Array.isArray(product.subProducts?.[0]?.images) && product.subProducts[0].images.length > 1)
+          ? (typeof product.subProducts[0].images[1] === 'string' ? product.subProducts[0].images[1] : (product.subProducts[0].images[1]?.url || null))
+          : null,
+      subProducts: JSON.parse(JSON.stringify(product.subProducts || [])),
       images: Array.isArray(product.images) ? product.images : [],
       slug: slug,
       category: categoryName,

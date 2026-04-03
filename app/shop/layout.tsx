@@ -56,6 +56,7 @@ interface Product {
     _id: string;
     name: string;
     slug?: string;
+    _doc?: any;
   } | string;
   subcategory?: string | { name: string; _id?: string };
   subCategories?: (string | { name: string; _id?: string })[];
@@ -78,6 +79,7 @@ interface Product {
   bestsellerRank?: number;
   orderCount?: number;
   sold?: number;
+  secondaryImage?: string | null;
 }
 
 // Page type enum to identify which page is currently active
@@ -548,7 +550,9 @@ export default function ShopLayout({
         originalPrice,
         discount: firstSubProduct?.discount || product.discount || 0,
         category: product.category,
-        tagValues: product.tagValues || [],
+       // Preserve tagValues and subProducts for detailed view
+      tagValues: product.tagValues || [],
+      subProducts: product.subProducts || [],
         subcategory,
         subCategories: product.subCategories || [], // Keep the original subCategories array
         isNew: product.isNew || (product.createdAt && new Date().getTime() - new Date(product.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000),
@@ -558,7 +562,11 @@ export default function ShopLayout({
         isOnSale: (firstSubProduct?.discount || product.discount || 0) > 0,
         stock,
         image,
-        subProducts,
+        secondaryImage: (product.images && Array.isArray(product.images) && product.images.length > 1) 
+          ? (typeof product.images[1] === 'string' ? product.images[1] : product.images[1].url)
+          : (firstSubProduct?.images && Array.isArray(firstSubProduct.images) && firstSubProduct.images.length > 1)
+            ? (typeof firstSubProduct.images[1] === 'string' ? firstSubProduct.images[1] : firstSubProduct.images[1].url)
+            : null,
         rating: product.rating || 0, // Extract rating
         numReviews: product.numReviews || product.reviews || 0, // Extract number of reviews
         orderCount: orderCount,

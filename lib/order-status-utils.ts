@@ -1,6 +1,6 @@
 /**
  * Utilities for handling order status mapping between website and admin formats
- * This file ensures consistent status handling across the electrophilic-web project
+ * This file ensures consistent status handling across the e-commerce-web project
  */
 
 /**

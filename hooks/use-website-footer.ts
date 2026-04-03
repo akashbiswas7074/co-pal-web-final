@@ -31,6 +31,7 @@ export interface WebsiteFooter {
     url: string;
   }>;
   copyrightText?: string;
+  showFooterName?: boolean;
   isActive?: boolean;
 }
 

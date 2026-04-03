@@ -47,11 +47,13 @@ BannerSchema.pre("find", function(next) {
   this.where({
     $or: [
       { startDate: { $exists: false } }, // No start date set
+      { startDate: null },               // Start date is null
       { startDate: { $lte: now } }       // Or start date is in the past/now
     ]
   }).where({
     $or: [
       { endDate: { $exists: false } },   // No end date set
+      { endDate: null },                 // End date is null
       { endDate: { $gte: now } }         // Or end date is in the future/now
     ]
   });

@@ -1,6 +1,6 @@
 // ISR(CACHE) - 1 HOUR
 import React, { JSX } from "react"; // Modified to import JSX namespace
-import StrengthTakesSweat from "@/components/shared/home/StrengthTakesSweat"; 
+import StrengthTakesSweat from "@/components/shared/home/StrengthTakesSweat";
 import BlogImages from "@/components/shared/home/BlogImages";
 import NeedOfWebsite from "@/components/shared/home/NeedOfWebsite";
 import Hero from "@/components/sections/Hero";
@@ -21,8 +21,13 @@ import { getAllCategories } from "@/lib/database/actions/categories.actions";
 import ProductCarousel from "@/components/shared/home/ProductCarousel";
 import { getPublicFeaturedVideos } from "@/lib/database/actions/featured.video.actions";
 import { getCategorySectionsWithProducts } from "@/lib/database/actions/category-sections.actions";
-import { getVisibleWebsiteSections } from "@/lib/database/actions/website.section.actions"; 
+import { getVisibleWebsiteSections } from "@/lib/database/actions/website.section.actions";
 import { getActiveHeroSections } from "@/lib/database/actions/hero-section.actions";
+import { getRecentBlogs } from "@/lib/database/actions/blog.actions";
+import { getActiveInfluencers } from "@/lib/database/actions/influencer.actions";
+import { getFeaturedReview } from "@/lib/database/actions/featured-review.actions";
+import { getActiveCollectionHighlight } from "@/lib/database/actions/collection-highlight.actions";
+import CollectionHighlightGrid from "@/components/shared/home/CollectionHighlightGrid";
 
 // Import lazy loading components
 import {
@@ -38,8 +43,16 @@ import {
   LazySubCategoryShowcase,
   LazyCategoryProductSection,
   LazyAllProductsSection,
-  LazyToughShoeHero
+  LazyToughShoeHero,
+  LazyFeaturedReviewHero,
+  LazyBlogGrid,
+  LazyInfluencerSpotlight,
+  LazyCollectionHighlightGrid,
+  LazyShopByCategories,
+  LazyGenderSection
 } from "@/components/shared/home/LazySections";
+import FeaturedCollection from "@/components/shared/home/FeaturedCollection";
+import StatsTicker from "@/components/shared/home/StatsTicker";
 
 // Define the type for an individual offer based on your HomeScreenOffer model
 interface HomeScreenOfferType {
@@ -76,6 +89,7 @@ interface TransformedProduct {
   name: string;
   category: string;
   image: string;
+  secondaryImage?: string | null;
   rating: number;
   reviews: number;
   price: number;
@@ -97,6 +111,8 @@ interface TransformedProduct {
   orderCount?: number; // Add order count for bestsellers
   isFeatured?: boolean; // Add featured property for compatibility with product components
   featured?: boolean; // Add featured property for compatibility with product components
+  subProducts?: any[]; // For fallback hover logic
+  images?: any[]; // For fallback hover logic
 }
 
 // Robust product transformer that manually creates a plain object
@@ -128,10 +144,10 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       // Skip product if ID cannot be resolved
       return null;
     }
-    
+
     if (!idString || idString.startsWith('INVALID_ID')) {
-        console.error(`[transformProductSafely - HomePage] Failed to obtain a valid string ID for product. Original _id: ${JSON.stringify(product._id)}, Product Name: ${product.name}`);
-        return null; // Skip product if ID is invalid
+      console.error(`[transformProductSafely - HomePage] Failed to obtain a valid string ID for product. Original _id: ${JSON.stringify(product._id)}, Product Name: ${product.name}`);
+      return null; // Skip product if ID is invalid
     }
 
     let slug = product.slug;
@@ -144,8 +160,8 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       }
     }
     if (!slug) {
-        console.error(`[transformProductSafely - HomePage] Product (ID: ${idString}) is missing a slug and cannot generate one. Name: "${product.name}". Product data:`, product);
-        return null;
+      console.error(`[transformProductSafely - HomePage] Product (ID: ${idString}) is missing a slug and cannot generate one. Name: "${product.name}". Product data:`, product);
+      return null;
     }
 
     // Use the first subProduct if available, otherwise use an empty object
@@ -157,7 +173,7 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
     let sizes: { size: string; price: number; qty: number }[] = [];
     let price = 0;
     let defaultQuantity = 0;
-    
+
     // Check if subProduct.sizes exists and is an array
     if (subProduct.sizes && Array.isArray(subProduct.sizes) && subProduct.sizes.length > 0) {
       // Process sizes if available - include sizes with empty strings but valid prices
@@ -169,7 +185,7 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
         // Keep sizes with valid price or quantity, even if size name is empty
         return size.price > 0 || size.qty > 0;
       });
-      
+
       // Calculate price based on sizes
       if (sizes.length > 0) {
         const validPrices = sizes.map(s => s.price).filter(p => !isNaN(p) && p > 0);
@@ -181,19 +197,19 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       // No sizes available - use direct product/subProduct data
       const subProductPrice = typeof subProduct.price === 'number' || typeof subProduct.price === 'string' ? parseFloat(subProduct.price) : 0;
       const productPrice = typeof product.price === 'number' || typeof product.price === 'string' ? parseFloat(product.price) : 0;
-      
+
       price = subProductPrice || productPrice || 0;
-      
+
       // Use direct quantity/stock from product or subProduct
-      const subProductQty = typeof subProduct.qty === 'number' ? subProduct.qty : 
-                           typeof subProduct.qty === 'string' ? parseInt(subProduct.qty) : 0;
-      const subProductStock = typeof subProduct.stock === 'number' ? subProduct.stock : 
-                             typeof subProduct.stock === 'string' ? parseInt(subProduct.stock) : 0;
-      const productStock = typeof product.stock === 'number' ? product.stock : 
-                          typeof product.stock === 'string' ? parseInt(product.stock) : 0;
-      const productQty = typeof product.qty === 'number' ? product.qty : 
-                        typeof product.qty === 'string' ? parseInt(product.qty) : 0;
-      
+      const subProductQty = typeof subProduct.qty === 'number' ? subProduct.qty :
+        typeof subProduct.qty === 'string' ? parseInt(subProduct.qty) : 0;
+      const subProductStock = typeof subProduct.stock === 'number' ? subProduct.stock :
+        typeof subProduct.stock === 'string' ? parseInt(subProduct.stock) : 0;
+      const productStock = typeof product.stock === 'number' ? product.stock :
+        typeof product.stock === 'string' ? parseInt(product.stock) : 0;
+      const productQty = typeof product.qty === 'number' ? product.qty :
+        typeof product.qty === 'string' ? parseInt(product.qty) : 0;
+
       defaultQuantity = subProductQty || subProductStock || productStock || productQty || 0;
     }
 
@@ -203,13 +219,13 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
     const imagesSource = (subProduct.images && Array.isArray(subProduct.images) && subProduct.images.length > 0)
       ? subProduct.images
       : (product.images && Array.isArray(product.images) && product.images.length > 0)
-      ? product.images
-      : [];
+        ? product.images
+        : [];
     // Get the main image URL
     if (imagesSource.length > 0) {
-       mainImage = typeof imagesSource[0] === 'string'
-         ? imagesSource[0]
-         : (imagesSource[0]?.url || "/images/broken-link.png");
+      mainImage = typeof imagesSource[0] === 'string'
+        ? imagesSource[0]
+        : (imagesSource[0]?.url || "/images/broken-link.png");
     }
     // Create the gallery array
     const gallery = Array.isArray(imagesSource) ?
@@ -221,7 +237,7 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       // If category is an object (populated), use name or ID
       if (typeof product.category === 'object' && product.category !== null) {
         categoryValue = String(product.category.name || product.category._id || "");
-      } 
+      }
       // If category is a primitive (likely an ID string)
       else {
         categoryValue = String(product.category);
@@ -247,6 +263,7 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       name: String(product.name || "Unnamed Product"),
       category: categoryValue, // Already processed string
       image: mainImage, // Already processed string
+      secondaryImage: gallery.length > 1 ? gallery[1] : null,
       rating: parseFloat(product.rating) || 0,
       reviews: parseInt(product.numReviews) || 0,
       price: price, // Already processed number
@@ -268,6 +285,8 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       colorCountText: product.colorCountText || colorCountText, // Use direct if available
       sold: calculateTotalSoldCount(product), // Calculate total sold count across product, subproducts and sizes
       stock: parseInt(product.stock) || defaultQuantity, // Add the stock property
+      subProducts: JSON.parse(JSON.stringify(product.subProducts || [])), // Preserve subProducts as plain objects
+      images: JSON.parse(JSON.stringify(product.images || [])), // Preserve images as plain objects
     };
 
     return plainProduct;
@@ -281,17 +300,17 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
 // Helper function to calculate total sold count across product, subproducts and sizes
 function calculateTotalSoldCount(product: any): number {
   if (!product) return 0;
-  
+
   // Main product sold count - handle all possible data types
-  const mainProductSold = typeof product.sold === 'number' ? product.sold : 
-                          typeof product.sold === 'string' ? parseInt(product.sold) : 
-                          product.sold ? Number(product.sold) : 0;
-  
+  const mainProductSold = typeof product.sold === 'number' ? product.sold :
+    typeof product.sold === 'string' ? parseInt(product.sold) :
+      product.sold ? Number(product.sold) : 0;
+
   // If the main product sold count is already populated, use it directly
   if (mainProductSold > 0) {
     return mainProductSold;
   }
-  
+
   // Otherwise, calculate from subproducts (if any)
   let subProductsSold = 0;
   if (Array.isArray(product.subProducts) && product.subProducts.length > 0) {
@@ -299,33 +318,33 @@ function calculateTotalSoldCount(product: any): number {
     const anySubProductHasSoldCount = product.subProducts.some(
       (subProduct: any) => {
         if (!subProduct) return false;
-        const subProductSold = typeof subProduct.sold === 'number' ? subProduct.sold : 
-                               typeof subProduct.sold === 'string' ? parseInt(subProduct.sold) : 
-                               subProduct.sold ? Number(subProduct.sold) : 0;
+        const subProductSold = typeof subProduct.sold === 'number' ? subProduct.sold :
+          typeof subProduct.sold === 'string' ? parseInt(subProduct.sold) :
+            subProduct.sold ? Number(subProduct.sold) : 0;
         return subProductSold > 0;
       }
     );
-    
+
     if (anySubProductHasSoldCount) {
       // If subProducts have their own sold counts, sum those up
-      subProductsSold = product.subProducts.reduce((total: number, subProduct: any) => {
-        if (!subProduct) return total;
-        const subProductSold = typeof subProduct.sold === 'number' ? subProduct.sold : 
-                               typeof subProduct.sold === 'string' ? parseInt(subProduct.sold) : 
-                               subProduct.sold ? Number(subProduct.sold) : 0;
-        return total + subProductSold;
+      subProductsSold = product.subProducts.reduce((total: number, subP: any) => {
+        if (!subP) return total;
+        const subProductSoldCount = typeof subP.sold === 'number' ? subP.sold :
+          typeof subP.sold === 'string' ? parseInt(subP.sold) :
+            subP.sold ? Number(subP.sold) : 0;
+        return total + subProductSoldCount;
       }, 0);
     } else {
       // If subProducts don't have sold counts, calculate from sizes
-      subProductsSold = product.subProducts.reduce((total: number, subProduct: any) => {
-        if (!subProduct) return total;
+      subProductsSold = product.subProducts.reduce((total: number, subP: any) => {
+        if (!subP) return total;
         let sizesSold = 0;
-        if (subProduct.sizes && Array.isArray(subProduct.sizes)) {
-          sizesSold = subProduct.sizes.reduce((sizesTotal: number, size: any) => {
+        if (subP.sizes && Array.isArray(subP.sizes)) {
+          sizesSold = subP.sizes.reduce((sizesTotal: number, size: any) => {
             if (!size) return sizesTotal;
-            const sizeSold = typeof size.sold === 'number' ? size.sold : 
-                            typeof size.sold === 'string' ? parseInt(size.sold) : 
-                            size.sold ? Number(size.sold) : 0;
+            const sizeSold = typeof size.sold === 'number' ? size.sold :
+              typeof size.sold === 'string' ? parseInt(size.sold) :
+                size.sold ? Number(size.sold) : 0;
             return sizesTotal + sizeSold;
           }, 0);
         }
@@ -333,12 +352,12 @@ function calculateTotalSoldCount(product: any): number {
       }, 0);
     }
   }
-  
+
   // If there's an orderCount property available, use it as a fallback
-  const orderCount = typeof product.orderCount === 'number' ? product.orderCount : 
-                     typeof product.orderCount === 'string' ? parseInt(product.orderCount) : 
-                     product.orderCount ? Number(product.orderCount) : 0;
-  
+  const orderCount = typeof product.orderCount === 'number' ? product.orderCount :
+    typeof product.orderCount === 'string' ? parseInt(product.orderCount) :
+      product.orderCount ? Number(product.orderCount) : 0;
+
   // Use the most reliable value
   if (subProductsSold > 0) {
     return subProductsSold;
@@ -346,7 +365,7 @@ function calculateTotalSoldCount(product: any): number {
     // Otherwise fall back to orderCount if available
     return orderCount;
   }
-  
+
   // Default to 0 if no sold data available
   return 0;
 }
@@ -391,35 +410,35 @@ interface WebsiteSection {
 export default async function Home() {
   const fetchAndTransformProducts = async (fetchFunction: () => Promise<any>) => {
     const result = await fetchFunction();
-    
+
     // Special handling for featured products which have a different structure
     if (result && result.success) {
       if (fetchFunction === getAllFeaturedProducts && Array.isArray(result.featuredProducts)) {
         return result.featuredProducts.map((product: any) => {
           // Transform product to match Hero component's expected format
-          const subProduct = (Array.isArray(product.subProducts) && product.subProducts.length > 0) 
+          const subProduct = (Array.isArray(product.subProducts) && product.subProducts.length > 0)
             ? product.subProducts[0] || {} : {};
-          
+
           // Get sizes with proper format
           const sizes = (subProduct.sizes && Array.isArray(subProduct.sizes))
             ? subProduct.sizes.map((size: any) => ({
-                size: String(size?.size || ""),
-                price: parseFloat(size?.price) || 0,
-                qty: parseInt(size?.qty) || 0
-              }))
+              size: String(size?.size || ""),
+              price: parseFloat(size?.price) || 0,
+              qty: parseInt(size?.qty) || 0
+            }))
             : [];
-          
+
           // Calculate price
-          const price = sizes.length > 0 
-            ? Math.min(...sizes.filter((s: { size: string; price: number; qty: number }) => s.price > 0).map((s: { size: string; price: number, qty: number }) => s.price)) || 0 
+          const price = sizes.length > 0
+            ? Math.min(...sizes.filter((s: { size: string; price: number; qty: number }) => s.price > 0).map((s: { size: string; price: number, qty: number }) => s.price)) || 0
             : (parseFloat(subProduct.price) || parseFloat(product.price) || 0);
-          
+
           // Get image
-          const image = product.image || 
-            (subProduct.images && Array.isArray(subProduct.images) && subProduct.images.length > 0 
-              ? (typeof subProduct.images[0] === 'string' ? subProduct.images[0] : subProduct.images[0]?.url) 
+          const image = product.image ||
+            (subProduct.images && Array.isArray(subProduct.images) && subProduct.images.length > 0
+              ? (typeof subProduct.images[0] === 'string' ? subProduct.images[0] : subProduct.images[0]?.url)
               : "/placeholder.png");
-          
+
           // Get gallery images
           const gallery = [];
           if (subProduct.images && Array.isArray(subProduct.images)) {
@@ -427,16 +446,16 @@ export default async function Home() {
               gallery.push(typeof img === 'string' ? img : (img?.url || ""));
             }
           }
-          
+
           // Calculate total sold count (from main product and all subproducts)
           const mainProductSold = typeof product.sold === 'number' ? product.sold : 0;
-          
+
           // Calculate total sold count from all subproducts (if any)
           let subProductsSold = 0;
           if (Array.isArray(product.subProducts) && product.subProducts.length > 0) {
             subProductsSold = product.subProducts.reduce((total: number, subP: any) => {
               const subProductSoldCount = typeof subP.sold === 'number' ? subP.sold : 0;
-              
+
               // Get sold count from sizes in this subproduct
               let sizesSold = 0;
               if (subP.sizes && Array.isArray(subP.sizes)) {
@@ -444,19 +463,20 @@ export default async function Home() {
                   return sizesTotal + (typeof size.sold === 'number' ? size.sold : 0);
                 }, 0);
               }
-              
+
               return total + subProductSoldCount + sizesSold;
             }, 0);
           }
-          
+
           // Total sold is the sum of main product sold and all subproducts (including their sizes)
           const totalSoldCount = mainProductSold + subProductsSold;
-          
+
           return {
             id: product._id.toString(),
             name: product.name || "",
             slug: product.slug || "",
             image: image,
+            secondaryImage: gallery.length > 1 ? gallery[1] : null,
             price: price,
             originalPrice: parseFloat(subProduct.originalPrice) || price,
             discount: parseInt(subProduct.discount) || 0,
@@ -469,17 +489,19 @@ export default async function Home() {
             colorName: subProduct.color_name || "",
             sold: totalSoldCount, // Explicitly include the sold count
             isFeatured: true, // Explicitly set isFeatured for all products from getAllFeaturedProducts
-            featured: true     // Add both property names for compatibility
+            featured: true,     // Add both property names for compatibility
+            subProducts: JSON.parse(JSON.stringify(product.subProducts || [])), // Preserve subProducts as plain objects
+            images: JSON.parse(JSON.stringify(product.images || [])), // Preserve images as plain objects
           };
         }).filter(Boolean);
       }
-      
+
       // Regular products (already have .products property)
       if (Array.isArray(result.products)) {
         return result.products.map(transformProductSafely).filter(Boolean);
       }
     }
-    
+
     return []; // Return empty array if no results
   };
 
@@ -488,14 +510,14 @@ export default async function Home() {
     // Ensure result and result.offers are defined and result.offers are an array
     if (result && result.success && Array.isArray(result.offers)) {
       // Return the whole result object, not just serialized offers
-      return result; 
+      return result;
     }
     // Return a default structure if fetching fails or offers are not as expected
     return { offers: [], message: result?.message || "Failed to fetch offers", success: result?.success || false };
   };
 
   const [
-    allOffersData, 
+    allOffersData,
     featuredProducts,
     newArrivals,
     topSelling,
@@ -505,7 +527,11 @@ export default async function Home() {
     subCategoriesResult,
     categorySectionsResult,
     websiteSectionsResult,
-    heroSectionsResult // Add this to fetch dynamic hero sections
+    heroSectionsResult,
+    recentBlogsResult,
+    influencersResult,
+    featuredReviewResult,
+    collectionHighlightResult
   ] = await Promise.all([
     fetchOffers(getAllHomeScreenOffers),
     fetchAndTransformProducts(getAllFeaturedProducts),
@@ -517,26 +543,41 @@ export default async function Home() {
     getAllSubCategories(),
     getCategorySectionsWithProducts(),
     getVisibleWebsiteSections(),
-    getActiveHeroSections() // Add this call to fetch active hero sections
+    getActiveHeroSections(),
+    getRecentBlogs(3),
+    getActiveInfluencers(),
+    getFeaturedReview(),
+    getActiveCollectionHighlight(),
   ]);
 
   const featuredVideos = featuredVideosResult?.success && featuredVideosResult.videos ? serializeData(featuredVideosResult.videos) : [];
-  
+
   // Process subcategories data
-  const subCategories = subCategoriesResult?.success && subCategoriesResult.subCategories ? 
+  const subCategories = subCategoriesResult?.success && subCategoriesResult.subCategories ?
     serializeData(subCategoriesResult.subCategories) : [];
 
   // Process category sections data
-  const categorySections = categorySectionsResult?.success && categorySectionsResult.sections ? 
+  const categorySections = categorySectionsResult?.success && categorySectionsResult.sections ?
     serializeData(categorySectionsResult.sections) : [];
 
   // Process website sections data
-  const websiteSections = websiteSectionsResult?.success && websiteSectionsResult.sections ? 
+  const websiteSections = websiteSectionsResult?.success && websiteSectionsResult.sections ?
     serializeData(websiteSectionsResult.sections) : [];
 
   // Process hero sections data
-  const heroSections = heroSectionsResult?.success && heroSectionsResult.sections ? 
+  const heroSections = heroSectionsResult?.success && heroSectionsResult.sections ?
     serializeData(heroSectionsResult.sections) : [];
+
+  const recentBlogs = recentBlogsResult?.success && recentBlogsResult.blogs ?
+    serializeData(recentBlogsResult.blogs) : [];
+
+  const influencers = influencersResult?.success && influencersResult.influencers ?
+    serializeData(influencersResult.influencers) : [];
+
+  const featuredReview = featuredReviewResult?.success && featuredReviewResult.review ?
+    serializeData(featuredReviewResult.review) : null;
+
+  const collectionHighlight = collectionHighlightResult ? serializeData(collectionHighlightResult) : null;
 
   // Filter offers for specific sections
   const specialComboOffers = Array.isArray(allOffersData?.offers)
@@ -560,10 +601,14 @@ export default async function Home() {
   // Map section IDs to their components
   const sectionComponents = {
     'banner-carousel': <LazyBannerCarousel />,
+    'stats-ticker': <StatsTicker />,
     'strength-takes-sweat': <StrengthTakesSweat />,
-    'featured-products': featuredProducts.length > 0 ? (
-      <LazyFeaturedProducts products={featuredProducts} />
-    ) : null,
+    'featured-products': (
+      <FeaturedCollection
+        featuredProducts={featuredProducts}
+        newArrivals={newArrivals}
+      />
+    ),
     'featured-showcase': featuredProducts.length > 0 ? (
       <LazyFeaturedShowcase
         featuredProducts={featuredProducts.slice(0, 3).map((product: TransformedProduct) => ({
@@ -575,11 +620,13 @@ export default async function Home() {
       />
     ) : null,
     'special-combos': <LazySpecialCombos comboData={specialCombosData} />,
-    'category-showcase': allCategories?.length > 0 ? <LazyCategoryShowcase categories={allCategories} /> : null,
+    'category-showcase': allCategories?.length > 0 ? <LazyShopByCategories categories={allCategories} /> : null,
+    'shop-by-categories': allCategories?.length > 0 ? <LazyShopByCategories categories={allCategories} /> : null,
+    'gender-section': <LazyGenderSection />,
     'sub-category-showcase': subCategories?.length > 0 ? (
-      <LazySubCategoryShowcase 
+      <LazySubCategoryShowcase
         subCategories={subCategories.slice(0, 3)}
-        title="Shop By Collections" 
+        title="Shop By Collections"
       />
     ) : null,
     'category-product-sections': categorySections.length > 0 ? (
@@ -603,45 +650,44 @@ export default async function Home() {
     ),
     'crazy-deals': <LazyCrazyDeals dealsData={crazyDealsData} />,
     'tough-shoe-hero': <LazyToughShoeHero />,
-    'new-arrivals': newArrivals.length > 0 ? (
-      <div id="new-arrivals">
-        <LazyNewArrivals products={newArrivals} />
-      </div>
-    ) : (
-      // Fallback: show all products as new arrivals if no specific new arrivals found
-      allProducts.length > 0 ? (
-        <div id="new-arrivals">
-          <LazyNewArrivals products={allProducts.slice(0, 8)} />
-        </div>
-      ) : null
-    ),
+    'new-arrivals': null, // Replaced by FeaturedCollection
     'top-reviews': <ReviewSection />, // Added Top Reviews section component
     'featured-videos': featuredVideos && featuredVideos.length > 0 ? (
       <LazyFeaturedVideoSection videos={featuredVideos} />
     ) : null,
+    'featured-review-hero': featuredReview ? (
+      <LazyFeaturedReviewHero data={featuredReview} />
+    ) : null,
+    'recent-blogs': recentBlogs.length > 0 ? (
+      <LazyBlogGrid blogs={recentBlogs} />
+    ) : null,
+    'influencer-spotlight': influencers.length > 0 ? (
+      <LazyInfluencerSpotlight influencers={influencers} />
+    ) : null,
     'all-products': allProducts.length > 0 ? (
       <LazyAllProductsSection products={allProducts} />
     ) : null,
-    'collection-highlights': (
-      <div className="my-20">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Collection Highlights would go here */}
-          </div> 
-        </div>
-      </div>
-    ),
+    'collection-highlights': collectionHighlight ? (
+      <LazyCollectionHighlightGrid
+        title={collectionHighlight.title}
+        subtitle={collectionHighlight.subtitle}
+        items={collectionHighlight.items}
+        titleColor={collectionHighlight.titleColor}
+        subtitleColor={collectionHighlight.subtitleColor}
+        backgroundColor={collectionHighlight.backgroundColor}
+      />
+    ) : null,
     // Dynamic hero sections - map each one by ID to make them individually placeable
     ...heroSections.reduce((acc: Record<string, JSX.Element>, section: any) => {
       // Create a unique section ID for each hero section (e.g., dynamic-hero-section-1)
       const uniqueSectionId = `dynamic-hero-section-${section._id}`;
-      
+
       // Add the mapping for this specific hero section
       acc[uniqueSectionId] = <DynamicHeroSection key={section._id} data={section} />;
-      
+
       return acc;
     }, {}),
-    
+
     // Generic dynamic-hero-section that shows all active hero sections (for backward compatibility)
     'dynamic-hero-section': heroSections.length > 0 ? (
       <>
@@ -671,7 +717,7 @@ export default async function Home() {
               }
               return null;
             }
-            
+
             // Regular component rendering based on sectionId
             return (
               <div key={section._id} id={section.sectionId}>
@@ -683,7 +729,8 @@ export default async function Home() {
           // Fallback to a default order if no sections are configured
           <>
             <LazyBannerCarousel />
-            
+            <StatsTicker />
+
             <StrengthTakesSweat />
             <div className="relative z-10">
               {featuredProducts.length > 0 ? (
@@ -700,14 +747,15 @@ export default async function Home() {
 
             <div className="relative z-0">
               <LazySpecialCombos comboData={specialCombosData} />
-              {allCategories?.length > 0 && <LazyCategoryShowcase categories={allCategories} />}
+              <LazyGenderSection />
+              {allCategories?.length > 0 && <LazyShopByCategories categories={allCategories} />}
               {subCategories?.length > 0 && (
-                <LazySubCategoryShowcase 
+                <LazySubCategoryShowcase
                   subCategories={subCategories.slice(0, 3)}
-                  title="Shop By Collections" 
+                  title="Shop By Collections"
                 />
               )}
-              
+
               {categorySections.length > 0 && categorySections.map((section: any) => (
                 <LazyCategoryProductSection
                   key={section._id}
@@ -724,10 +772,10 @@ export default async function Home() {
                   <LazyBestSellingProducts />
                 </div>
               )}
-              
+
               <LazyCrazyDeals dealsData={crazyDealsData} />
-              <LazyToughShoeHero/>
-              
+              <LazyToughShoeHero />
+
               {newArrivals.length > 0 && (
                 <div id="new-arrivals">
                   <LazyNewArrivals products={newArrivals} />
@@ -740,9 +788,32 @@ export default async function Home() {
               {featuredVideos && featuredVideos.length > 0 && (
                 <LazyFeaturedVideoSection videos={featuredVideos} />
               )}
-              
+
               {allProducts.length > 0 && (
                 <LazyAllProductsSection products={allProducts} />
+              )}
+
+              {featuredReview && (
+                <LazyFeaturedReviewHero data={featuredReview} />
+              )}
+
+              {recentBlogs.length > 0 && (
+                <LazyBlogGrid blogs={recentBlogs} />
+              )}
+
+              {influencers.length > 0 && (
+                <LazyInfluencerSpotlight influencers={influencers} />
+              )}
+
+              {collectionHighlight && (
+                <LazyCollectionHighlightGrid
+                  title={collectionHighlight.title}
+                  subtitle={collectionHighlight.subtitle}
+                  items={collectionHighlight.items}
+                  titleColor={collectionHighlight.titleColor}
+                  subtitleColor={collectionHighlight.subtitleColor}
+                  backgroundColor={collectionHighlight.backgroundColor}
+                />
               )}
             </div>
           </>

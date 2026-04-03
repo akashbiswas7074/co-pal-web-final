@@ -104,8 +104,8 @@ export const transformProductSafely = (product: any) => {
       }
     }
     if (!slug) {
-        console.error(`[transformProductSafely] Product (ID: ${idString}) is missing a slug and cannot generate one. Name: "${product.name}". Product data:`, product);
-        return null;
+      console.error(`[transformProductSafely] Product (ID: ${idString}) is missing a slug and cannot generate one. Name: "${product.name}". Product data:`, product);
+      return null;
     }
 
     // Use the first subProduct if available, otherwise use an empty object
@@ -117,7 +117,7 @@ export const transformProductSafely = (product: any) => {
     let sizes: { size: string; price: number; qty: number }[] = [];
     let price = 0;
     let defaultQuantity = 0;
-    
+
     // Check if subProduct.sizes exists and is an array
     if (subProduct.sizes && Array.isArray(subProduct.sizes) && subProduct.sizes.length > 0) {
       // Process sizes if available - include sizes with empty strings but valid price/qty
@@ -129,7 +129,7 @@ export const transformProductSafely = (product: any) => {
         // Keep sizes with valid price or quantity, even if size name is empty
         return size.price > 0 || size.qty > 0;
       });
-      
+
       // Calculate price based on sizes
       if (sizes.length > 0) {
         const validPrices = sizes.map(s => s.price).filter(p => !isNaN(p) && p > 0);
@@ -141,30 +141,30 @@ export const transformProductSafely = (product: any) => {
       // No sizes available - use direct product/subProduct data
       const subProductPrice = typeof subProduct.price === 'number' || typeof subProduct.price === 'string' ? parseFloat(subProduct.price) : 0;
       const productPrice = typeof product.price === 'number' || typeof product.price === 'string' ? parseFloat(product.price) : 0;
-      
+
       price = subProductPrice || productPrice || 0;
-      
+
       // Use direct quantity/stock from product or subProduct
-      const subProductQty = typeof subProduct.qty === 'number' ? subProduct.qty : 
-                           typeof subProduct.qty === 'string' ? parseInt(subProduct.qty) : 0;
-      const subProductStock = typeof subProduct.stock === 'number' ? subProduct.stock : 
-                             typeof subProduct.stock === 'string' ? parseInt(subProduct.stock) : 0;
-      const productStock = typeof product.stock === 'number' ? product.stock : 
-                          typeof product.stock === 'string' ? parseInt(product.stock) : 0;
-      const productQty = typeof product.qty === 'number' ? product.qty : 
-                        typeof product.qty === 'string' ? parseInt(product.qty) : 0;
-      
+      const subProductQty = typeof subProduct.qty === 'number' ? subProduct.qty :
+        typeof subProduct.qty === 'string' ? parseInt(subProduct.qty) : 0;
+      const subProductStock = typeof subProduct.stock === 'number' ? subProduct.stock :
+        typeof subProduct.stock === 'string' ? parseInt(subProduct.stock) : 0;
+      const productStock = typeof product.stock === 'number' ? product.stock :
+        typeof product.stock === 'string' ? parseInt(product.stock) : 0;
+      const productQty = typeof product.qty === 'number' ? product.qty :
+        typeof product.qty === 'string' ? parseInt(product.qty) : 0;
+
       defaultQuantity = subProductQty || subProductStock || productStock || productQty || 0;
     }
 
     // --- Enhanced Image Handling --- 
     let mainImage = "/images/broken-link.png";
-    
+
     // Debug product image structure
     const hasDirectImage = !!product.image;
     const hasImagesArray = Array.isArray(product.images) && product.images.length > 0;
     const hasSubProducts = Array.isArray(product.subProducts) && product.subProducts.length > 0;
-    
+
     let firstSubProductHasImages = false;
     if (hasSubProducts) {
       const firstSubProduct = product.subProducts[0];
@@ -182,12 +182,12 @@ export const transformProductSafely = (product: any) => {
     } else if (hasDirectImage) {
       imageUrl = typeof product.image === 'string' ? product.image : (product.image?.url || null);
     }
-    
+
     mainImage = imageUrl || "/images/broken-link.png";
 
     // --- Gallery Processing ---
     const gallery = [];
-    
+
     // Add sub-product images to gallery
     if (firstSubProductHasImages) {
       product.subProducts[0].images.forEach((img: any) => {
@@ -195,7 +195,7 @@ export const transformProductSafely = (product: any) => {
         if (imgUrl) gallery.push(imgUrl);
       });
     }
-    
+
     // Add product images array to gallery if it exists
     if (hasImagesArray) {
       product.images.forEach((img: any) => {
@@ -203,7 +203,7 @@ export const transformProductSafely = (product: any) => {
         if (imgUrl) gallery.push(imgUrl);
       });
     }
-    
+
     // Add direct product image if it exists
     if (hasDirectImage && !gallery.includes(imageUrl)) {
       const directImgUrl = typeof product.image === 'string' ? product.image : (product.image?.url || null);
@@ -227,8 +227,8 @@ export const transformProductSafely = (product: any) => {
     // --- Featured Status Determination --- 
     // Fix for the featured bridge - ensure consistent featured status detection
     const isProductFeatured = Boolean(
-      product.featured || 
-      product.isFeatured || 
+      product.featured ||
+      product.isFeatured ||
       (product._doc && (product._doc.featured || product._doc.isFeatured)) ||
       (typeof product._id !== 'undefined' && (product.featured === true || product.isFeatured === true))
     );
@@ -265,6 +265,9 @@ export const transformProductSafely = (product: any) => {
         .sort((a: number, b: number) => a - b),
       description: String(product.description || ""),
       gallery: gallery, // Enhanced gallery handling
+      secondaryImage: gallery.length > 1 ? gallery[1] : null, // Explicitly include secondary image
+      subProducts: JSON.parse(JSON.stringify(product.subProducts || [])), // Preserve subProducts as plain objects
+      images: JSON.parse(JSON.stringify(product.images || [])), // Preserve images as plain objects
       sizes: sizes, // Already processed array of plain objects
       subtitle: product.subtitle || subtitle, // Use direct product.subtitle if available, otherwise derived
       colorCountText: product.colorCountText || colorCountText, // Use direct if available
@@ -294,18 +297,18 @@ export const extractProductImage = (product: any, defaultImage: string = "/image
     // Based on the product schema, the most common image location is in subProducts[0].images[0]
     if (Array.isArray(product.subProducts) && product.subProducts.length > 0) {
       const firstSubProduct = product.subProducts[0];
-      
+
       // Check if subProduct has images array with content
       if (Array.isArray(firstSubProduct.images) && firstSubProduct.images.length > 0) {
         const firstImage = firstSubProduct.images[0];
-        
+
         // Handle different possible image formats
         if (typeof firstImage === 'string') {
           return firstImage; // Direct string URL
         } else if (firstImage && typeof firstImage === 'object') {
           // Object with url property (Cloudinary format)
           if (firstImage.url) return firstImage.url;
-          
+
           // If it's a Cloudinary object with secure_url
           if (firstImage.secure_url) return firstImage.secure_url;
         }
@@ -318,7 +321,7 @@ export const extractProductImage = (product: any, defaultImage: string = "/image
       if (product.image.url) return product.image.url;
       if (product.image.secure_url) return product.image.secure_url;
     }
-    
+
     // Try product.images array if available
     if (Array.isArray(product.images) && product.images.length > 0) {
       const firstImg = product.images[0];
@@ -343,21 +346,21 @@ export const extractProductImage = (product: any, defaultImage: string = "/image
  */
 export const extractCategoryImage = (category: any, defaultImage: string = "/images/broken-link.png"): string => {
   if (!category) return defaultImage;
-  
+
   try {
     // Handle direct image property
     if (category.image) {
       if (typeof category.image === 'string') return category.image;
       if (category.image.url) return category.image.url;
     }
-    
+
     // Handle images array (according to your category schema)
     if (Array.isArray(category.images) && category.images.length > 0) {
       const firstImg = category.images[0];
       if (typeof firstImg === 'string') return firstImg;
       if (firstImg && firstImg.url) return firstImg.url;
     }
-    
+
     return defaultImage;
   } catch (error) {
     console.error("Error extracting category image:", error);
@@ -384,7 +387,7 @@ export function ensureClientData<T>(data: T, defaultValue?: T): T {
   if (data === undefined || data === null) {
     return (defaultValue !== undefined) ? defaultValue : null as unknown as T;
   }
-  
+
   // Ensure data is serialized properly
   try {
     return JSON.parse(JSON.stringify(data));
@@ -405,7 +408,7 @@ export const createBrandFilterLink = (brandId: string, brandName?: string): stri
     console.warn("createBrandFilterLink called without a brandId");
     return "/shop";
   }
-  
+
   try {
     // Create URL with brand parameter
     return `/shop?brand=${encodeURIComponent(brandId)}`;

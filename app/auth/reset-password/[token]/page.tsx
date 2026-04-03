@@ -85,13 +85,13 @@ export default function ResetPasswordPage() {
 
   if (isSuccess) {
     return (
-      <div className="flex min-h-screen bg-white dark:bg-gray-900" style={{ position: 'relative', overflow: 'hidden' }}>
+      <div className="flex bg-white dark:bg-gray-900" style={{ position: 'relative', overflow: 'hidden', minHeight: 'calc(100vh - 64px)' }}>
         {/* Left column - Professional Image Background section */}
-        <div 
+        <div
           className="hidden lg:flex relative overflow-hidden"
           style={{
             width: '50%',
-            minHeight: '100vh',
+            minHeight: 'calc(100vh - 64px)',
           }}
         >
           <div
@@ -109,7 +109,7 @@ export default function ResetPasswordPage() {
             }}
           ></div>
           <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/75 z-10"></div>
-          <div 
+          <div
             className="absolute top-0 bottom-0 right-0 pointer-events-none z-20"
             style={{
               width: '350px',
@@ -118,14 +118,14 @@ export default function ResetPasswordPage() {
               WebkitBackdropFilter: 'blur(5px)',
             }}
           ></div>
-          
+
           <div className="relative z-50 flex flex-col justify-center px-8 xl:px-16 py-12 xl:py-20 text-white h-full">
             <div className="max-w-lg">
               <div className="flex items-center mb-6 xl:mb-8">
-                <Image 
-                  src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"} 
-                  alt={logo?.altText || "Company Logo"} 
-                  width={200} 
+                <Image
+                  src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"}
+                  alt={logo?.altText || "Company Logo"}
+                  width={200}
                   height={60}
                   className="drop-shadow-lg w-auto h-auto max-w-[180px] xl:max-w-[200px]"
                 />
@@ -140,18 +140,18 @@ export default function ResetPasswordPage() {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900" style={{ minHeight: '100vh' }}>
+        <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900" style={{ minHeight: 'calc(100vh - 64px)' }}>
           <div className="w-full max-w-lg">
             <div className="text-center mb-6 sm:mb-8 lg:hidden">
-              <Image 
-                src={logo?.logoUrl || "/logo.png"} 
-                alt={logo?.altText || "Company Logo"} 
-                width={160} 
+              <Image
+                src={logo?.logoUrl || "/logo.png"}
+                alt={logo?.altText || "Company Logo"}
+                width={160}
                 height={50}
                 className="mx-auto mb-3 sm:mb-4 drop-shadow-md w-auto h-auto max-w-[140px] sm:max-w-[160px]"
               />
             </div>
-            
+
             <Card className="border-0 shadow-xl sm:shadow-2xl bg-white dark:bg-gray-800 relative overflow-hidden text-center">
               <CardHeader className="space-y-2 sm:space-y-3 pb-6 sm:pb-8 pt-6 sm:pt-8 lg:pt-10 px-4 sm:px-6 lg:px-8">
                 <div className="mx-auto bg-green-100 rounded-full p-3 sm:p-4 w-fit mb-3 sm:mb-4 shadow-lg dark:bg-green-900/30">
@@ -166,8 +166,8 @@ export default function ResetPasswordPage() {
               </CardHeader>
               <CardContent className="px-4 sm:px-6 lg:px-8">
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-6">You will be redirected to the sign-in page shortly...</p>
-                <Button 
-                  asChild 
+                <Button
+                  asChild
                   className="w-full h-12 sm:h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
                 >
                   <Link href="/auth/signin">Proceed to Sign In</Link>
@@ -181,23 +181,20 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-gray-900" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div className="flex bg-white dark:bg-gray-900" style={{ position: 'relative', overflow: 'hidden', minHeight: 'calc(100vh - 64px)' }}>
       {/* Left column - Professional Image Background section */}
-      <div 
+      <div
         className="hidden lg:flex relative overflow-hidden"
         style={{
           width: '50%',
-          minHeight: '100vh',
+          minHeight: 'calc(100vh - 64px)',
         }}
       >
+        {/* CSS background image instead of fixed div */}
         <div
-          className="fixed inset-0"
+          className="absolute inset-0"
           style={{
-            width: '50vw',
-            height: '100vh',
-            left: 0,
-            top: 0,
-            backgroundImage: `url('https://res.cloudinary.com/dgfk4nqhf/image/upload/v1767465033/image_ty1t8h.png')`,
+            backgroundImage: `url('${logo?.authBackgroundUrl || "https://res.cloudinary.com/dgfk4nqhf/image/upload/v1767465033/image_ty1t8h.png"}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -205,7 +202,7 @@ export default function ResetPasswordPage() {
           }}
         ></div>
         <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/75 z-10"></div>
-        <div 
+        <div
           className="absolute top-0 bottom-0 right-0 pointer-events-none z-20"
           style={{
             width: '350px',
@@ -214,14 +211,14 @@ export default function ResetPasswordPage() {
             WebkitBackdropFilter: 'blur(5px)',
           }}
         ></div>
-        
+
         <div className="relative z-50 flex flex-col justify-center px-8 xl:px-16 py-12 xl:py-20 text-white h-full">
           <div className="max-w-lg">
             <div className="flex items-center mb-6 xl:mb-8">
-              <Image 
-                src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"} 
-                alt={logo?.altText || "Company Logo"} 
-                width={200} 
+              <Image
+                src={logo?.mobileLogoUrl || logo?.logoUrl || "/logo-white.png"}
+                alt={logo?.altText || "Company Logo"}
+                width={200}
                 height={60}
                 className="drop-shadow-lg w-auto h-auto max-w-[180px] xl:max-w-[200px]"
               />
@@ -237,19 +234,19 @@ export default function ResetPasswordPage() {
       </div>
 
       {/* Right column - Professional Form section */}
-      <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900" style={{ minHeight: '100vh' }}>
+      <div className="w-full lg:w-1/2 lg:flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12 lg:py-16 relative z-10 bg-white dark:bg-gray-900" style={{ minHeight: 'calc(100vh - 64px)' }}>
         <div className="w-full max-w-lg">
           <div className="text-center mb-6 sm:mb-8 lg:hidden">
-            <Image 
-              src={logo?.logoUrl || "/logo.png"} 
-              alt={logo?.altText || "Company Logo"} 
-              width={160} 
+            <Image
+              src={logo?.logoUrl || "/logo.png"}
+              alt={logo?.altText || "Company Logo"}
+              width={160}
               height={50}
               className="mx-auto mb-3 sm:mb-4 drop-shadow-md w-auto h-auto max-w-[140px] sm:max-w-[160px]"
             />
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Reset Your Password</h1>
           </div>
-          
+
           <Card className="border-0 shadow-xl sm:shadow-2xl bg-white dark:bg-gray-800 relative overflow-hidden">
             <CardHeader className="space-y-2 sm:space-y-3 text-center pb-6 sm:pb-8 pt-6 sm:pt-8 lg:pt-10 px-4 sm:px-6 lg:px-8">
               <div className="mx-auto bg-gray-100 dark:bg-gray-700 rounded-full p-3 sm:p-4 w-fit mb-3 sm:mb-4 shadow-lg">
@@ -262,7 +259,7 @@ export default function ResetPasswordPage() {
                 Enter your new password below
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="px-4 sm:px-6 lg:px-8">
               {error && (
                 <div className="flex items-start sm:items-center p-3 sm:p-4 text-xs sm:text-sm text-red-700 bg-red-50 rounded-xl border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800 mb-4 sm:mb-6">
@@ -286,7 +283,7 @@ export default function ResetPasswordPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       placeholder="Enter your new password"
-                      className="pl-10 sm:pl-12 pr-10 sm:pr-12 h-12 sm:h-14 border-2 border-gray-200 focus:border-gray-700 dark:border-gray-600 dark:focus:border-gray-500 rounded-xl transition-all duration-200 bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-gray-700 focus:ring-opacity-20 text-sm sm:text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400" 
+                      className="pl-10 sm:pl-12 pr-10 sm:pr-12 h-12 sm:h-14 border-2 border-gray-200 focus:border-gray-700 dark:border-gray-600 dark:focus:border-gray-500 rounded-xl transition-all duration-200 bg-gray-50 dark:bg-gray-900 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-gray-700 focus:ring-opacity-20 text-sm sm:text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                     />
                     <button
                       type="button"
@@ -327,9 +324,9 @@ export default function ResetPasswordPage() {
                   </div>
                 </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 sm:h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] mt-2" 
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-14 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] mt-2"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -343,7 +340,7 @@ export default function ResetPasswordPage() {
                 </Button>
               </form>
             </CardContent>
-            
+
             <CardFooter className="flex justify-center border-t border-gray-200 dark:border-gray-700 pt-6 sm:pt-8 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8">
               <p className="text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 Remembered your password?{" "}
@@ -353,7 +350,7 @@ export default function ResetPasswordPage() {
               </p>
             </CardFooter>
           </Card>
-          
+
           <p className="text-center text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-6 sm:mt-8 leading-relaxed px-4">
             Need help? <Link href="/contact" className="text-gray-600 dark:text-gray-400 hover:underline">Contact Support</Link>
           </p>

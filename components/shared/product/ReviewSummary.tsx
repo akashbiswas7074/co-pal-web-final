@@ -14,51 +14,59 @@ interface ReviewSummaryProps {
 }
 
 const ReviewSummary = ({ rating, totalReviews, breakdown }: ReviewSummaryProps) => {
-  // If there are no reviews, don't render anything
-  if (totalReviews === 0) {
-    return null;
-  }
-  
+  if (totalReviews === 0) return null;
+
   return (
-    <div className="bg-white p-5 rounded-lg border border-gray-200">
-      <div className="flex flex-col md:flex-row md:items-start md:space-x-6">
-        {/* Overall Rating */}
-        <div className="text-center md:text-left mb-6 md:mb-0 flex-shrink-0">
-          <h3 className="text-xl font-semibold mb-1">Overall Rating</h3>
-          <div className="flex items-center justify-center md:justify-start mb-2">
-            <span className="text-3xl font-bold mr-2">{rating.toFixed(1)}</span>
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-5 w-5 ${
-                    i < Math.round(rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-                  }`}
-                />
-              ))}
-            </div>
+    <div className="py-8 border-b border-gray-100">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-12">
+        {/* Left: Big Rating */}
+        <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+          <div className="flex items-baseline gap-2 mb-2">
+            <span className="text-6xl font-bold tracking-tighter text-gray-900">{rating.toFixed(1)}</span>
+            <span className="text-xl font-medium text-gray-400">/ 5.0</span>
           </div>
-          <p className="text-sm text-gray-500">{totalReviews} reviews</p>
+          <div className="flex mb-3">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                size={20}
+                className={i < Math.floor(rating) ? "fill-[#ffcc00] text-[#ffcc00]" : "text-gray-200"}
+              />
+            ))}
+          </div>
+          <p className="text-sm font-medium uppercase tracking-widest text-gray-500">
+            Based on {totalReviews.toLocaleString()} {totalReviews === 1 ? 'Review' : 'Reviews'}
+          </p>
         </div>
 
-        {/* Rating Breakdown */}
-        <div className="w-full">
-          <h3 className="text-lg font-semibold mb-3">Rating Breakdown</h3>
-          <div className="space-y-3">
-            {breakdown.map((item) => (
-              <div key={item.stars} className="flex items-center">
-                <div className="w-24 flex items-center">
-                  <span className="text-sm mr-1">{item.stars}</span>
-                  <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                </div>
-                <div className="flex-1 mx-2">
-                  <Progress value={item.percentage} className="h-2" />
-                </div>
-                <div className="w-14 text-right">
-                  <span className="text-sm text-gray-500">{item.percentage}%</span>
-                </div>
+        {/* Right: Detailed Breakdown */}
+        <div className="flex-grow max-w-xl space-y-3">
+          {breakdown.map((item) => (
+            <div key={item.stars} className="flex items-center gap-4 group cursor-default">
+              <div className="flex items-center gap-1 w-12 shrink-0">
+                <span className="text-sm font-bold text-gray-900">{item.stars}</span>
+                <Star size={12} className="fill-gray-900 text-gray-900" />
               </div>
-            ))}
+              <div className="flex-grow h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-black transition-all duration-500 ease-out group-hover:bg-gray-800"
+                  style={{ width: `${item.percentage}%` }}
+                />
+              </div>
+              <div className="w-12 text-right shrink-0">
+                <span className="text-sm font-medium text-gray-400 group-hover:text-gray-900 transition-colors">
+                  {item.percentage}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Action: Optional secondary info/button */}
+        <div className="hidden lg:block lg:ml-auto">
+          <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+            <p className="text-sm font-bold text-gray-900 mb-1 italic">"Authentic feedback from verified customers"</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Transparency Guaranteed</p>
           </div>
         </div>
       </div>

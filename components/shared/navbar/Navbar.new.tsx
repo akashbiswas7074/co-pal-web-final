@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Menu, ShoppingCart, User, X, Heart, Search } from "lucide-react";
+import { Menu, ShoppingCart, User, X, Heart, Search, ChevronDown, LogOut } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import Image from "next/image";
@@ -19,7 +19,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "next-auth/react";
+import { useAtom, useStore } from "jotai";
+import { hamburgerMenuState } from "./store";
 import { useCartStore } from "@/store/cart";
+
 import { useWebsiteLogo } from "@/hooks/use-website-logo";
 import { useSiteConfig } from "@/hooks/use-site-config";
 import { useNavbarLinks } from "@/hooks/use-navbar-links";
@@ -108,18 +111,23 @@ const Navbar = () => {
   const { data: session, status } = useSession();
   const { removeItem, updateItemQuantity, isCartDrawerOpen, setCartDrawerOpen } = useCart();
   const { wishlist, isLoading: isWishlistLoading } = useWishlist();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { logo, isLoading: isLogoLoading } = useWebsiteLogo();
+  const siteConfig = useSiteConfig();
+
+  const { links: navbarLinks, loading: navLinksLoading } = useNavbarLinks();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useAtom(hamburgerMenuState, {
+    store: useStore(),
+  });
+  const [isScrolled, setIsScrolled] = useState(false);
   const [show, setShow] = useState("translate-y-0");
   const [lastScrollY, setLastScrollY] = useState(0);
   const cartItems = useCartStore((state: any) => state.cart?.cartItems || []);
   const [isMobile, setIsMobile] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [openSearchModal, setOpenSearchModal] = useState(false);
-  const { logo, isLoading: isLogoLoading } = useWebsiteLogo();
-  const siteConfig = useSiteConfig();
-  const { links: navbarLinks, loading: navLinksLoading } = useNavbarLinks();
   const pathname = usePathname();
   const [categories, setCategories] = useState<any[]>([]);
+
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -148,11 +156,17 @@ const Navbar = () => {
 
   useEffect(() => {
     const controlNavbar = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+
       if (window.scrollY > 200) {
         if (window.scrollY > lastScrollY && !isMobileMenuOpen) {
           setShow("-translate-y-full");
         } else {
-          setShow("shadow-md");
+          setShow("shadow-lg");
         }
       } else {
         setShow("translate-y-0");
@@ -171,11 +185,11 @@ const Navbar = () => {
   const navItems = navbarLinks.length > 0
     ? navbarLinks
     : [
-      { label: "BEST SELLERS", href: "#bestsellers" },
-      { label: "NEW ARRIVALS", href: "#new-arrivals" },
-      { label: "SHOP", href: "/shop" },
-      { label: "CONTACT", href: "/contact" },
-      { label: "ORDERS", href: "/orders" },
+      { label: "Fragrances", href: "/shop" },
+      { label: "Sample Packs", href: "/products/order-samples" },
+      { label: "Classifications", href: "/categories" },
+      { label: "Support", href: "/support" },
+      { label: "Our Story", href: "/about" },
     ];
 
   const logoUrl = logo?.logoUrl || siteConfig.logo.imagePath;
@@ -187,47 +201,63 @@ const Navbar = () => {
   return (
     <>
       <div className={`fixed top-0 left-0 right-0 z-[100] transition-transform duration-300 ${show}`}>
-        <Suspense fallback={<TopBarSkeleton />}>
-          <TopBarComponent />
-        </Suspense>
+        {!isAuthPage && (
+          <Suspense fallback={<TopBarSkeleton />}>
+            <TopBarComponent />
+          </Suspense>
+        )}
 
-        <nav className="w-full transition-all duration-300 ease-in-out bg-white border-b border-gray-200 shadow-sm">
-          <div className="px-2 sm:px-4 lg:px-6 mx-auto max-w-7xl">
-            <div className="flex items-center justify-between h-14 sm:h-16">
-              {/* Logo */}
-              {isLogoLoading ? (
-                <LogoSkeleton />
-              ) : (
-                <Link href="/" className="flex items-center relative z-10 group flex-shrink-0">
-                  {showLogoImage ? (
-                    <div className="relative h-8 w-24 sm:h-10 sm:w-32 lg:w-36 transition-all duration-300 group-hover:opacity-80">
-                      <Image
-                        src={isMobile ? mobileLogoUrl : logoUrl}
-                        alt={altText}
-                        fill
-                        className="object-contain"
-                        priority
-                      />
-                    </div>
-                  ) : (
-                    <div className="relative h-8 w-24 sm:h-10 sm:w-32 lg:w-36 transition-all duration-300 group-hover:opacity-80">
-                      <span className="text-gray-900 text-lg sm:text-xl font-bold tracking-wider truncate">{logoText}</span>
-                    </div>
-                  )}
-                </Link>
-              )}
+        <nav className={`w-full transition-all duration-1000 ease-in-out ${isAuthPage ? 'bg-[#1a0a2c]/60 backdrop-blur-2xl py-2 sm:py-4 shadow-2xl' : isScrolled ? 'bg-[#1a0a2c]/60 backdrop-blur-2xl py-2 sm:py-4 shadow-2xl' : 'bg-[#1a0a2c]/40 backdrop-blur-xl py-2 sm:py-5 shadow-lg'} border-b border-white/5`}>
+          <div className="px-3 sm:px-6 lg:px-10 xl:px-20 mx-auto max-w-[1920px]">
+            <div className="flex items-center justify-between h-auto gap-1 sm:gap-4 md:gap-6 lg:gap-12 w-full">
+              <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0 min-w-0">
+                {/* Logo */}
+                {isLogoLoading ? (
+                  <LogoSkeleton />
+                ) : (
+
+                  <Link href="/" className="flex items-center relative z-10 group flex-shrink-0 animate-in fade-in slide-in-from-left duration-1000 w-auto">
+                    {showLogoImage && logoUrl ? (
+                      <div className="relative h-8 sm:h-12 md:h-16 w-[120px] sm:w-[180px] md:w-[220px] transition-transform duration-500 group-hover:scale-105">
+                        <Image
+                          src={logoUrl}
+
+                          alt={altText}
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+
+                    ) : (
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-white text-3xl sm:text-5xl md:text-7xl font-serif font-black tracking-[0.2em] sm:tracking-[0.3em] mb-1 sm:mb-2 drop-shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
+                          {logoText || "THE DUA BRAND"}
+                        </span>
+                        <span className="text-[9px] sm:text-[12px] md:text-[14px] text-white/90 tracking-[0.4em] sm:tracking-[0.6em] font-bold uppercase pl-1 drop-shadow-md">
+                          Handcrafted in Los Angeles
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+                )}
+              </div>
 
               {/* Desktop Navigation Links - Centered */}
               {navLinksLoading ? (
                 <NavLinksSkeleton />
               ) : (
-                <div className="hidden md:flex items-center gap-6 lg:gap-8 flex-1 justify-center">
+                <div className="hidden items-center gap-6 lg:gap-8 justify-center">
+
+
+
                   {/* CATEGORIES Dropdown */}
                   {categories.length > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="text-sm lg:text-base font-medium text-gray-700 hover:text-black transition-all duration-300 relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 after:bg-black after:transition-all hover:after:w-full whitespace-nowrap py-2 px-1">
-                          CATEGORIES
+                        <button className="text-[11px] lg:text-[13px] font-bold text-white/90 hover:text-white transition-all duration-300 uppercase tracking-[0.1em] flex items-center gap-1 group whitespace-nowrap py-2 px-1">
+                          Classifications
+                          <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
@@ -282,7 +312,7 @@ const Navbar = () => {
                   {navItems.map((item) => {
                     // Use native anchor for hash links, Link for regular routes
                     const isHashLink = item.href?.startsWith('#');
-                    const linkClassName = "text-sm lg:text-base font-medium text-gray-700 hover:text-black transition-all duration-300 relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 after:bg-black after:transition-all hover:after:w-full whitespace-nowrap py-2 px-1";
+                    const linkClassName = "text-[11px] lg:text-[13px] font-bold text-white/90 hover:text-white transition-all duration-300 uppercase tracking-[0.1em] whitespace-nowrap py-2 px-1";
 
                     if (isHashLink) {
                       return (
@@ -317,29 +347,30 @@ const Navbar = () => {
               </div>
 
               {/* Right section - Action buttons */}
-              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              <div className="flex items-center gap-0.5 sm:gap-2 flex-shrink-0">
                 {/* Search Button */}
                 <button
                   onClick={toggleSearch}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-all duration-300 
-                    active:scale-95 hover:shadow-sm text-gray-700 hover:text-black group"
+                  className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 
+                    active:scale-95 hover:shadow-sm text-white/90 hover:text-white group"
                   title="Search"
                 >
-                  <Search className="h-5 w-5 sm:h-[22px] sm:w-[22px] transition-colors duration-300" />
+                  <Search className="h-[18px] w-[18px] transition-colors duration-300" />
                 </button>
+
 
                 {/* Wishlist Icon */}
                 <Link href="/wishlist" passHref>
                   <button
-                    className="relative p-2 hover:bg-gray-100 rounded-full transition-all duration-300
-                      active:scale-95 hover:shadow-sm text-gray-700 hover:text-black"
+                    className="relative p-2 hover:bg-white/10 rounded-full transition-all duration-300
+                      active:scale-95 hover:shadow-sm text-white/90 hover:text-white"
                     title="Wishlist"
                   >
-                    <Heart className="h-5 w-5 sm:h-[22px] sm:w-[22px] transition-colors duration-300" />
+                    <Heart className="h-[18px] w-[18px] transition-colors duration-300" />
                     {!isWishlistLoading && wishlist.length > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white 
-                        text-xs font-semibold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center
-                        shadow-sm ring-2 ring-white animate-in zoom-in text-[10px] sm:text-xs min-w-[16px] sm:min-w-[20px]"
+                      <span className="absolute -top-1 -right-1 bg-red-600 text-white 
+                        text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center
+                        shadow-sm ring-1 ring-[#1a0a2c] animate-in zoom-in min-w-[16px]"
                       >
                         {wishlist.length > 99 ? '99+' : wishlist.length}
                       </span>
@@ -350,15 +381,15 @@ const Navbar = () => {
                 {/* Cart */}
                 <button
                   onClick={() => setCartDrawerOpen(true)}
-                  className="relative p-2 hover:bg-gray-100 rounded-full transition-all duration-300 
-                    active:scale-95 hover:shadow-sm text-gray-700 hover:text-black"
+                  className="relative p-2 hover:bg-white/10 rounded-full transition-all duration-300 
+                    active:scale-95 hover:shadow-sm text-white/90 hover:text-white"
                   title="Shopping Cart"
                 >
-                  <ShoppingCart className="h-5 w-5 sm:h-[22px] sm:w-[22px] transition-colors duration-300" />
+                  <ShoppingCart className="h-[18px] w-[18px] transition-colors duration-300" />
                   {Array.isArray(cartItems) && cartItems.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-semibold rounded-full 
-                      h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center shadow-sm ring-2 ring-white 
-                      animate-in zoom-in text-[10px] sm:text-xs min-w-[16px] sm:min-w-[20px]">
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold rounded-full 
+                      h-4 w-4 flex items-center justify-center shadow-sm ring-1 ring-[#1a0a2c] 
+                      animate-in zoom-in min-w-[16px]">
                       {cartItems.reduce((total, item) => {
                         const itemQty = Number(item?.quantity || item?.qty || 0);
                         return total + itemQty;
@@ -382,17 +413,22 @@ const Navbar = () => {
                         </AvatarFallback>
                       </Avatar>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 bg-white shadow-lg border border-gray-200">
-                      <DropdownMenuItem asChild className="p-0 focus:bg-gray-100 focus:text-gray-700">
-                        <Link href="/profile" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">
-                          Profile
+                    <DropdownMenuContent align="end" className="w-56 bg-[#1a0a2c]/95 backdrop-blur-2xl border border-white/10 shadow-2xl z-[1002] rounded-xl p-2 animate-in fade-in zoom-in-95 duration-200">
+                      <DropdownMenuLabel className="text-white/50 text-[10px] uppercase tracking-[0.2em] px-3 py-2">
+                        Account Settings
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem asChild className="focus:bg-white/10 focus:text-white rounded-lg transition-colors cursor-pointer">
+                        <Link href="/profile" className="flex items-center w-full px-3 py-2.5 text-sm text-white/90">
+                          <User className="h-4 w-4 mr-3 opacity-70" />
+                          My Profile
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator className="bg-white/5 my-1" />
                       <DropdownMenuItem
                         onClick={() => signOut()}
-                        className="text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:text-gray-700 cursor-pointer px-3 py-2 text-sm"
+                        className="focus:bg-red-500/10 focus:text-red-400 text-red-400 rounded-lg transition-colors cursor-pointer px-3 py-2.5 text-sm flex items-center"
                       >
+                        <LogOut className="h-4 w-4 mr-3 opacity-70" />
                         Sign out
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -412,7 +448,20 @@ const Navbar = () => {
                     </Button>
                   </Link>
                 )}
+
+                {/* Burger Menu Button (Far Right) */}
+                <button
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="p-2 text-white/90 hover:text-white transition-all duration-300 
+                    active:scale-95 flex items-center gap-2 group ml-2 border border-white/20 rounded-md"
+                  aria-label="Open Menu"
+                >
+                  <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="hidden lg:inline-block text-[11px] font-bold tracking-widest uppercase text-white/70 group-hover:text-white transition-colors">Menu</span>
+                </button>
+
               </div>
+
             </div>
           </div>
         </nav>
@@ -431,13 +480,14 @@ const Navbar = () => {
           />
 
           <div className={`
-            absolute top-0 right-0 h-full w-full max-w-xs sm:max-w-sm bg-white 
-            flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.1)] 
+            absolute top-0 right-0 h-screen w-full max-w-xs sm:max-w-sm bg-[#1a0a2c] 
+            flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.3)] 
             transition-transform duration-300 ease-in-out
             ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
           `} suppressHydrationWarning>
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
-              <h2 className="text-lg sm:text-xl font-medium text-gray-900">Menu</h2>
+
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
+              <h2 className="text-lg sm:text-xl font-medium text-white">Menu</h2>
               <Button
                 variant="ghost"
                 size="icon"
@@ -445,12 +495,12 @@ const Navbar = () => {
                   active:scale-95 h-8 w-8 p-1.5"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <X className="h-5 w-5 text-gray-700" />
+                <X className="h-5 w-5 text-white/70 hover:text-white" />
               </Button>
             </div>
 
             {/* Mobile search inside menu */}
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/10">
               <Suspense fallback={<NavbarInputSkeleton />}>
                 <NavbarInput responsive={true} />
               </Suspense>
@@ -462,15 +512,15 @@ const Navbar = () => {
                 <div className="px-4 sm:px-6 mb-4">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="categories" className="border-none">
-                      <AccordionTrigger className="py-3 text-base sm:text-lg font-medium text-gray-900 hover:no-underline">
-                        CATEGORIES
+                      <AccordionTrigger className="py-3 text-base sm:text-lg font-medium text-white/90 hover:no-underline">
+                        Classifications
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="flex flex-col space-y-1 mt-1">
                           {categories.map((cat) => (
                             <Accordion type="single" collapsible key={cat._id} className="w-full border-b border-gray-100 last:border-0">
                               <AccordionItem value={cat._id} className="border-none">
-                                <AccordionTrigger className="py-4 pl-2 text-[15px] font-bold text-gray-900 hover:no-underline hover:text-black transition-colors uppercase tracking-tight">
+                                <AccordionTrigger className="py-4 pl-2 text-[15px] font-bold text-white/90 hover:no-underline hover:text-white transition-colors uppercase tracking-[0.05em]">
                                   {cat.name}
                                 </AccordionTrigger>
                                 <AccordionContent>
@@ -513,7 +563,7 @@ const Navbar = () => {
                 <div className="overflow-y-auto flex-1 py-4 sm:py-6">
                   {navItems.map((item) => {
                     const isHashLink = item.href?.startsWith('#');
-                    const linkClassName = "block px-4 sm:px-6 py-3 text-base sm:text-lg text-gray-700 hover:bg-gray-100 transition-all duration-300 active:scale-[0.98] border-b border-gray-50 last:border-b-0";
+                    const linkClassName = "block px-4 sm:px-6 py-3 text-base sm:text-lg text-white/80 hover:text-white hover:bg-white/5 transition-all duration-300 active:scale-[0.98] border-b border-white/5 last:border-b-0";
 
                     if (isHashLink) {
                       return (

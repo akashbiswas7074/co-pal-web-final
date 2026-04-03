@@ -89,6 +89,8 @@ interface TransformedProduct {
   originalPrice: number; // Original price before any discount
   discount?: number; // Discount percentage
   image: string; // Added: Expects a single image URL
+  secondaryImage?: string | null;
+  subProducts?: any[];
   images: any[]; // Keep original images array if needed elsewhere
   slug: string; // Added: Generate a slug
   category?: string; // Changed from categoryName, made optional
@@ -316,6 +318,12 @@ const transformProductSafely = (product: any): TransformedProduct | null => {
       originalPrice: basePrice, // Add original price field
       discount: discountPercentage,
       image: getImageUrl(product),
+      secondaryImage: (Array.isArray(product.images) && product.images.length > 1)
+        ? (typeof product.images[1] === 'string' ? product.images[1] : (product.images[1]?.url || null))
+        : (Array.isArray(product.subProducts?.[0]?.images) && product.subProducts[0].images.length > 1)
+          ? (typeof product.subProducts[0].images[1] === 'string' ? product.subProducts[0].images[1] : (product.subProducts[0].images[1]?.url || null))
+          : null,
+      subProducts: JSON.parse(JSON.stringify(product.subProducts || [])),
       images: Array.isArray(product.images) ? product.images : [], // Pass images array if available
       slug: slug, // Use the processed slug
       category: categoryInfo.name, // Use the resolved category name

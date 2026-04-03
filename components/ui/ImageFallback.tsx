@@ -24,7 +24,7 @@ export const ImageFallback: React.FC<ImageFallbackProps> = ({
   // For logo.png or error.png, generate a text-based fallback
   const generateTextFallback = () => {
     if (src.includes('logo.png')) {
-      return 'Electrophilic';
+      return "E-Commerce";
     } else if (src.includes('error.png')) {
       return 'Error';
     }

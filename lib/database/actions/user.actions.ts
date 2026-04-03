@@ -12,7 +12,7 @@ import { handleError } from "@/lib/utils";
 export async function createUser(user: any) {
   try {
     await connectToDatabase();
-    
+
     if (!user.email) {
       console.error("Missing email in user data for createUser"); // Added more specific log
       return null;
@@ -37,22 +37,31 @@ export async function createUser(user: any) {
       image: user.image || "",
       provider: user.provider || "credentials", // Ensure provider is set
       emailVerified: user.emailVerified || (user.provider !== 'credentials' ? new Date() : null), // Auto-verify for OAuth
-      // Add any other fields that are part of your User model and might come from `user` object
+      referredBy: undefined as any,
     };
 
+    // Handle referral code
+    if (user.referralCode) {
+      const referrer = await User.findOne({ referralCode: user.referralCode.toUpperCase() });
+      if (referrer) {
+        userData.referredBy = referrer._id;
+        console.log(`[createUser] User referred by: ${referrer.email}`);
+      }
+    }
+
     console.log("Creating new user with data:", userData);
-    
+
     // Create new user with validated data
     const newUser = await User.create(userData);
     console.log("New user created successfully with ID:", newUser._id);
-    
+
     return JSON.parse(JSON.stringify(newUser));
   } catch (error) {
     console.error("Error creating user:", error);
     // Check for duplicate key errors specifically for username or email if not caught by findOne
     if ((error as any).code === 11000) {
-        console.error("Duplicate key error:", (error as any).keyValue);
-        // Potentially try to find the user again if it was a race condition, or return specific error
+      console.error("Duplicate key error:", (error as any).keyValue);
+      // Potentially try to find the user again if it was a race condition, or return specific error
     }
     handleError(error);
     return null;
@@ -67,20 +76,20 @@ export async function getUserById(userId: string) {
       console.log("[getUserById] No userId provided.");
       return null;
     }
-    
+
     console.log(`[getUserById] Fetching user with ID: ${userId}`);
     // Ensure all necessary fields are selected if there are any `select: false` in the model
     // By default, findById selects all fields not explicitly excluded.
-    const user = await User.findById(userId); 
-    
+    const user = await User.findById(userId);
+
     if (!user) {
       console.log(`[getUserById] User not found with ID: ${userId}`);
       return null;
     }
     console.log(`[getUserById] User found: ${user.email}, Name: ${user.firstName} ${user.lastName || ''}`);
-    
+
     const formattedAddresses = user.address || [];
-      
+
     // Add debug logs to track data flow
     console.log(`[getUserById] User data being returned:`, {
       firstName: user.firstName || '',
@@ -89,7 +98,7 @@ export async function getUserById(userId: string) {
       phone: user.phone || (user.address && user.address.length > 0 ? user.address[0].phoneNumber : ''),
       addressCount: formattedAddresses.length
     });
-    
+
     // Return all fields needed by the checkout component
     return JSON.parse(JSON.stringify({
       _id: user._id,
@@ -100,7 +109,8 @@ export async function getUserById(userId: string) {
       image: user.image,
       phone: user.phone || (user.address && user.address.length > 0 ? user.address[0].phoneNumber : ''),
       // Include addresses if needed by checkout
-      addresses: formattedAddresses
+      addresses: formattedAddresses,
+      loyaltyPoints: user.loyaltyPoints || 0
     }));
   } catch (error) {
     console.error(`[getUserById] Error fetching user ${userId}:`, error);
@@ -190,19 +200,19 @@ export async function getUserAddresses(userId: string) {
   try {
     await connectToDatabase();
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return { success: false, message: "User not found", addresses: [] };
     }
-    
+
     // Check if user has addresses
     if (!user.address || !Array.isArray(user.address)) {
       return { success: true, message: "No addresses found", addresses: [] };
     }
-    
-    return { 
-      success: true, 
-      message: "Addresses found", 
+
+    return {
+      success: true,
+      message: "Addresses found",
       addresses: JSON.parse(JSON.stringify(user.address))
     };
   } catch (error) {
@@ -227,10 +237,10 @@ export async function saveAddress(address: any, userId: string) {
 
     // If we're updating an existing address
     if (address._id) {
-      const addressIndex = user.address.findIndex((addr: any) => 
+      const addressIndex = user.address.findIndex((addr: any) =>
         addr._id.toString() === address._id
       );
-      
+
       if (addressIndex >= 0) {
         // Update existing address
         user.address[addressIndex] = { ...user.address[addressIndex], ...address };
@@ -245,11 +255,11 @@ export async function saveAddress(address: any, userId: string) {
 
     // Save the updated user
     await user.save();
-    
-    return { 
-      success: true, 
-      message: "Address saved successfully", 
-      addresses: JSON.parse(JSON.stringify(user.address)) 
+
+    return {
+      success: true,
+      message: "Address saved successfully",
+      addresses: JSON.parse(JSON.stringify(user.address))
     };
   } catch (error) {
     handleError(error);
@@ -282,7 +292,7 @@ export async function applyCoupon(coupon: string, userId: string) {
         success: true,
       })
     );
-  } catch (error) {}
+  } catch (error) { }
 }
 
 // get all orders of user for their profile:

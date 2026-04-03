@@ -15,36 +15,35 @@ interface NavItemProps {
 
 const NavItem: React.FC<NavItemProps> = ({ href, icon: Icon, label, isActive, onClick }) => {
   return (
-    <Link href={href} legacyBehavior>
-      <a
-        onClick={onClick}
+    <Link 
+      href={href}
+      onClick={onClick}
+      className={`
+        flex flex-col items-center justify-center flex-1 py-2
+        transition-colors transition-transform duration-300 ease-in-out
+        transform hover:scale-105 group
+        ${isActive
+          ? "text-red-500"
+          : "text-gray-500 hover:text-red-500"
+        }
+      `}
+    >
+      <Icon
+        size={24}
+        strokeWidth={isActive ? 2.5 : 2}
         className={`
-          flex flex-col items-center justify-center flex-1 py-2 // Added py-2 for vertical padding
-          transition-colors transition-transform duration-300 ease-in-out // Transitions for color and transform (scale)
-          transform hover:scale-105 group // Apply a slight scale on hover to the whole item
-          ${isActive
-            ? "text-red-500" // Active: red text
-            : "text-gray-500 hover:text-red-500" // Inactive: gray, hover to red
-          }
+          transition-transform duration-300 ease-out
+          ${isActive ? "-translate-y-1.5" : "translate-y-0"}
+        `}
+      />
+      <span
+        className={`
+          text-xs font-medium transition-opacity duration-300 ease-in-out pt-0.5
+          ${isActive ? "opacity-100 font-semibold" : "opacity-90 group-hover:opacity-100"}
         `}
       >
-        <Icon
-          size={24}
-          strokeWidth={isActive ? 2.5 : 2}
-          className={`
-            transition-transform duration-300 ease-out // Specific transition for icon's vertical movement
-            ${isActive ? "-translate-y-1.5" : "translate-y-0"} // Active icon moves up by 6px (-0.375rem), inactive is at baseline
-          `}
-        />
-        <span
-          className={`
-            text-xs font-medium transition-opacity duration-300 ease-in-out pt-0.5 // Added small top padding for spacing
-            ${isActive ? "opacity-100 font-semibold" : "opacity-90 group-hover:opacity-100"}
-          `}
-        >
-          {label}
-        </span>
-      </a>
+        {label}
+      </span>
     </Link>
   );
 };

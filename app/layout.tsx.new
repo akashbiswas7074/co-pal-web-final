@@ -10,8 +10,8 @@ import "react-toastify/dist/ReactToastify.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Electrophilic",
-  description: "Electronics components and more",
+  title: 'E-Commerce',
+  description: 'Welcome to E-Commerce - Electronics Components Store',
 };
 
 export default function RootLayout({

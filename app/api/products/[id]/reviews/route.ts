@@ -23,7 +23,7 @@ export async function POST(
     const clerkId = session.user.id;
     const { id } = await params;
     const productId = id;
-    const { rating, comment, orderId, orderItemId } = await req.json();
+    const { rating, comment, orderId, orderItemId, images, videos } = await req.json();
 
     // Validate inputs
     if (!rating || !comment) {
@@ -44,12 +44,12 @@ export async function POST(
 
     // Find user by clerkId
     let user = await User.findOne({ clerkId });
-    
+
     // If user not found by clerkId, try looking up by email
     if (!user && session.user.email) {
       user = await User.findOne({ email: session.user.email });
     }
-    
+
     // If still no user found, create a new user record
     if (!user && session.user.email) {
       user = await User.create({
@@ -59,7 +59,7 @@ export async function POST(
         lastName: session.user.name?.split(' ').slice(1).join(' ') || '',
         image: session.user.image || '',
       });
-      
+
       console.log("Created new user record for review:", user._id);
     }
 
@@ -94,7 +94,7 @@ export async function POST(
       if (order) {
         // Find the ordered item either by orderItemId or productId
         orderItem = order.orderItems?.find(
-          (item: any) => 
+          (item: any) =>
             (orderItemId && item._id.toString() === orderItemId) ||
             (item.product && item.product._id && item.product._id.toString() === productId) ||
             (item.productId && item.productId.toString() === productId)
@@ -144,20 +144,22 @@ export async function POST(
             "reviews.$.review": comment,
             "reviews.$.rating": rating,
             "reviews.$.reviewCreatedAt": new Date(),
-            "reviews.$.verified": verifiedPurchase
+            "reviews.$.verified": verifiedPurchase,
+            "reviews.$.images": images || [],
+            "reviews.$.videos": videos || []
           }
         }
       );
 
       // Get the updated product to recalculate rating
       const updatedProduct = await Product.findById(productId).populate("reviews.reviewBy");
-      
+
       // Update overall product rating
       updatedProduct.numReviews = updatedProduct.reviews.length;
       updatedProduct.rating = updatedProduct.reviews.reduce(
         (acc: number, r: any) => acc + r.rating, 0
       ) / updatedProduct.reviews.length;
-      
+
       await updatedProduct.save();
 
       // If there's an order associated, mark the item as reviewed
@@ -187,7 +189,9 @@ export async function POST(
         rating,
         review: comment,
         reviewCreatedAt: new Date(),
-        verified: verifiedPurchase
+        verified: verifiedPurchase,
+        images: images || [],
+        videos: videos || []
       };
 
       product.reviews.push(reviewData);
@@ -195,7 +199,7 @@ export async function POST(
       product.rating = product.reviews.reduce(
         (acc: number, r: any) => acc + r.rating, 0
       ) / product.reviews.length;
-      
+
       await product.save();
       await product.populate("reviews.reviewBy");
 
@@ -247,7 +251,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
+
     const productId = id;
 
     await connectToDatabase();
@@ -273,11 +277,13 @@ export async function GET(
       comment: review.review,
       createdAt: review.reviewCreatedAt,
       user: review.reviewBy._id.toString(),
-      name: review.reviewBy.firstName 
-        ? `${review.reviewBy.firstName} ${review.reviewBy.lastName || ''}`.trim() 
+      name: review.reviewBy.firstName
+        ? `${review.reviewBy.firstName} ${review.reviewBy.lastName || ''}`.trim()
         : "Anonymous",
       userImage: review.reviewBy.image || "",
-      verified: review.verified || false
+      verified: review.verified || false,
+      images: review.images || [],
+      videos: review.videos || []
     }));
 
     return NextResponse.json({

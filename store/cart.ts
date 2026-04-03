@@ -9,13 +9,16 @@ type CartItem = {
   _id: string;
   name: string;
   price: number;
-  originalPrice?: number; // Add originalPrice as optional
+  originalPrice?: number;
   image: string;
-  quantity: number; // Frontend quantity state
-  qty?: number; // Keep for potential backend mapping if needed, but prefer quantity
+  quantity: number;
+  qty?: number;
   size?: string;
-  availableQty?: number; // Optional: Available stock quantity
-  _uid: string; // Unique identifier for cart instance - NOW MANDATORY
+  availableQty?: number;
+  _uid: string;
+  product?: string; // MongoDB product ID (required by checkout)
+  isSample?: boolean; // true for sample pack items
+  sample?: string; // sample document ID
   shippingDimensions?: {
     length: number;
     breadth: number;
@@ -111,16 +114,26 @@ export const useCartStore = create<CartState & CartActions>()((set, get) => ({
         const savedCartResult = await getSavedCartForUser(session.user.id);
         // Check if fetch was successful and cart data exists with products array
         if (savedCartResult.success && savedCartResult.cart && Array.isArray(savedCartResult.cart.products)) {
-          initialCartItems = savedCartResult.cart.products.map((item: any) => ({
-            ...item,
-            _id: item.product?._id || item.product, // Explicitly map DB 'product' field (ObjectId) to frontend '_id'
-            product: undefined, // Remove the original 'product' field to avoid confusion
-            quantity: item.qty || item.quantity || 1, // Map DB qty to frontend quantity
-            // Ensure _uid uses the correct ID field (_id) after mapping
-            _uid: generateUid({ ...item, _id: item.product?._id || item.product }),
-            // Map shipping dimensions from populated product
-            shippingDimensions: item.product?.shippingDimensions
-          }));
+          initialCartItems = savedCartResult.cart.products.map((item: any) => {
+            const isSampleItem = !!item.sample || !!item.isSample;
+            
+            // Get plain string IDs - ObjectIds from DB must be converted to string
+            const productIdStr = item.product?._id?.toString() || (item.product ? item.product.toString() : undefined);
+            const sampleIdStr = item.sample?._id?.toString() || (item.sample ? item.sample.toString() : undefined);
+            
+            // For samples, use the sample ID as the unique identifier _id
+            const itemId = isSampleItem ? (sampleIdStr || item._id) : (productIdStr || item._id);
+            return {
+              ...item,
+              _id: itemId,
+              product: productIdStr, // plain string
+              sample: sampleIdStr,   // plain string (fixes Buffer serialization error)
+              isSample: isSampleItem,
+              quantity: item.qty || item.quantity || 1,
+              _uid: itemId ? `${itemId}_${item.size || 'default'}` : `unknown_${Date.now()}`,
+              shippingDimensions: item.product?.shippingDimensions,
+            };
+          });
           console.log("Loaded cart from DB:", initialCartItems);
         } else if (savedCartResult.success && !savedCartResult.cart) {
           console.log("No cart found in DB for this user.");
@@ -157,6 +170,8 @@ export const useCartStore = create<CartState & CartActions>()((set, get) => ({
 
     const itemWithUid = {
       ...itemToAdd,
+      // Ensure product field is set (required for regular products during checkout)
+      product: itemToAdd.product || (itemToAdd.isSample ? undefined : itemToAdd._id),
       _uid: generateUid(itemToAdd) // Generate UID consistently
     };
 
@@ -228,6 +243,8 @@ export const useCartStore = create<CartState & CartActions>()((set, get) => ({
     // Ensure all items have _uid before updating state
     const itemsWithUid = items.map(item => ({
       ...item,
+      // Ensure product field is set
+      product: item.product || (item.isSample ? undefined : item._id),
       _uid: item._uid || generateUid(item) // Generate UID if missing (shouldn't happen ideally)
     }));
     set({ cart: { cartItems: itemsWithUid } });

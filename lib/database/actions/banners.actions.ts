@@ -16,8 +16,13 @@ export const fetchAllWebsiteBanners = async (platform: "desktop" | "mobile"): Pr
       type: "website", // Ensure we only get website banners
       platform: platform,  // Filter by the specified platform
     })
-    .sort({ priority: 1, createdAt: -1 }) // Sort by priority (ascending), then by newest
-    .lean(); // Use .lean() for plain JavaScript objects and performance
+      .sort({ priority: 1, createdAt: -1 }) // Sort by priority (ascending), then by newest
+      .lean(); // Use .lean() for plain JavaScript objects and performance
+
+    console.log(`[banners.actions] Fetched ${banners.length} banners for platform: ${platform}`);
+    if (banners.length === 0) {
+      console.log(`[banners.actions] No banners found for platform: ${platform}. Query:`, { type: "website", platform });
+    }
 
     // Convert Date objects to strings for client-side serialization
     return JSON.parse(JSON.stringify(banners));

@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         name: product.name,
         slug: product.slug,
         image: firstImage,
+        secondaryImage: firstSubProduct?.images?.[1]?.url || null,
         price: price,
         originalPrice: originalPrice,
         discount: discount,

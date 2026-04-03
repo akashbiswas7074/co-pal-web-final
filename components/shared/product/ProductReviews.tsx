@@ -22,41 +22,43 @@ interface ProductReviewsProps {
     createdAt: string;
     userImage?: string;
     verified?: boolean;
+    images?: Array<{ url: string; public_id: string }>;
+    videos?: Array<{ url: string; public_id: string }>;
   }>;
   userOrderItems?: any[]; // Order items belonging to the current user
 }
 
-const ProductReviews = ({ 
-  productId, 
-  productName, 
-  productImage, 
+const ProductReviews = ({
+  productId,
+  productName,
+  productImage,
   reviews,
   userOrderItems = []
 }: ProductReviewsProps) => {
   const { data: session } = useSession();
   const router = useRouter();
   const [showAllReviews, setShowAllReviews] = useState(false);
-  
+
   // Calculate review statistics
   const { averageRating, totalReviews, breakdown } = calculateReviewStatistics(reviews);
-  
+
   // Check if user can review this product
   const { canReview, orderItem } = canUserReviewProduct(userOrderItems, productId);
 
   // Reviews to display (limit to 3 initially)
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 3);
-  
+
   return (
     <div className="mt-12 space-y-8">
       <h2 className="text-2xl font-bold">Customer Reviews</h2>
-      
+
       {/* Review Summary */}
-      <ReviewSummary 
-        rating={averageRating} 
-        totalReviews={totalReviews} 
-        breakdown={breakdown} 
+      <ReviewSummary
+        rating={averageRating}
+        totalReviews={totalReviews}
+        breakdown={breakdown}
       />
-      
+
       {/* Write a Review Button */}
       <div>
         {session ? (
@@ -76,8 +78,8 @@ const ProductReviews = ({
             </div>
           ) : (
             <p className="text-gray-500 text-sm italic">
-              {reviews.some(r => r.user === session.user?.id) 
-                ? "You've already reviewed this product" 
+              {reviews.some(r => r.user === session.user?.id)
+                ? "You've already reviewed this product"
                 : "You can review this product after purchasing and receiving it"}
             </p>
           )
@@ -87,23 +89,23 @@ const ProductReviews = ({
           </Button>
         )}
       </div>
-      
+
       {/* Reviews List */}
       <div className="mt-8">
         <ReviewList reviews={displayedReviews} productName={productName} />
-        
+
         {/* Show More Button */}
         {!showAllReviews && reviews.length > 3 && (
           <div className="mt-6 text-center">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowAllReviews(true)}
             >
               Show All {reviews.length} Reviews
             </Button>
           </div>
         )}
-        
+
         {/* No Reviews Message */}
         {reviews.length === 0 && (
           <div className="text-center py-12 bg-gray-50 rounded-lg">

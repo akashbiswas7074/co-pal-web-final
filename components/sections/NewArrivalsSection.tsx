@@ -27,6 +27,9 @@ interface Product {
   orderCount?: number;
   sold?: number;
   stock?: number;
+  subProducts?: any[];
+  images?: any[];
+  secondaryImage?: string | null;
 }
 
 interface NewArrivalsSectionProps {
@@ -66,6 +69,13 @@ const NewArrivalsSection = ({
         // Force featured status as boolean and ensure it's preserved
         featured: isProductFeatured,
         isFeatured: isProductFeatured,
+        secondaryImage: (Array.isArray(product.images) && product.images.length > 1)
+          ? (typeof product.images[1] === 'string' ? product.images[1] : (product.images[1]?.url || null))
+          : (Array.isArray(product.subProducts?.[0]?.images) && product.subProducts[0].images.length > 1)
+            ? (typeof product.subProducts[0].images[1] === 'string' ? product.subProducts[0].images[1] : (product.subProducts[0].images[1]?.url || null))
+            : null,
+        subProducts: JSON.parse(JSON.stringify(product.subProducts || [])),
+        images: Array.isArray(product.images) ? product.images : [],
         // Ensure image is always defined with a default value
         image: product.image || '/images/broken-link.png'
       };

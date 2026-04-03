@@ -17,11 +17,12 @@ import { toast } from "sonner";
 import {
   User, CreditCard, LogOut, ShoppingBag, MapPin, Settings,
   Camera, Loader2, ChevronRight, CalendarDays, Package, ShoppingCart,
-  Mail, Trash2, Plus, Check, Phone
+  Mail, Trash2, Plus, Check, Phone, Star, Copy, Gift
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { convertToWebP } from "@/lib/image-utils";
 import PhoneVerificationForm from "@/components/shared/auth/PhoneVerificationForm"; // Import the PhoneVerificationForm component
 
 export default function ProfilePage() {
@@ -39,6 +40,8 @@ export default function ProfilePage() {
     email: "",
     image: "",
     username: "",
+    loyaltyPoints: 0,
+    referralCode: "",
   });
   const [orders, setOrders] = useState<{ id: any; date: string; status: string; total: number; items: any[] }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +83,8 @@ export default function ProfilePage() {
             email: session.user.email || "",
             image: session.user.image || "",
             username: session.user.username || "",
+            loyaltyPoints: 0,
+            referralCode: "",
           });
 
           // Fetch extended profile data if needed
@@ -97,6 +102,8 @@ export default function ProfilePage() {
                 setProfile(prev => ({
                   ...prev,
                   image: extendedProfile.user.image || prev.image,
+                  loyaltyPoints: extendedProfile.user.loyaltyPoints || 0,
+                  referralCode: extendedProfile.user.referralCode || "",
                 }));
               }
             }
@@ -222,8 +229,18 @@ export default function ProfilePage() {
     setUploading(true);
 
     try {
+      // Convert image to WebP format
+      let fileToUpload = file;
+      try {
+        const webpBlob = await convertToWebP(file);
+        fileToUpload = new File([webpBlob], file.name.replace(/\.[^/.]+$/, "") + ".webp", { type: 'image/webp' });
+      } catch (err) {
+        console.error('WebP conversion failed for profile image:', err);
+        // Fallback to original file
+      }
+
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', fileToUpload);
 
       const res = await fetch("/api/user/upload", {
         method: "POST",
@@ -582,18 +599,18 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-white pb-12">
-      {/* Header Banner - Removing gradient background */}
-      <div className="bg-white text-white">
-        <div className="container mx-auto py-12 px-4">
-          <h1 className="text-3xl md:text-4xl font-bold">My Account</h1>
-          <p className="mt-2 text-neutral-800">Manage your profile, orders, and preferences</p>
+      {/* Header Banner */}
+      <div className="bg-gray-50 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">My Account</h1>
+          <p className="mt-2 text-gray-600">Manage your profile, orders, and preferences</p>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Left Sidebar */}
-          <div className="md:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <Card className="border shadow-sm">
               <CardHeader className="text-center pb-2">
                 <div className="relative mx-auto">
@@ -721,21 +738,10 @@ export default function ProfilePage() {
                 </Button>
               </CardFooter>
             </Card>
-
-            <Card className="border shadow-sm mt-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Need Help?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <Link href="/help/faq" className="block text-primary hover:underline">Frequently Asked Questions</Link>
-                <Link href="/help/contact" className="block text-primary hover:underline">Contact Customer Support</Link>
-                <Link href="/help/returns" className="block text-primary hover:underline">Return Policy</Link>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Main Content Area */}
-          <div className="md:col-span-2 lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             {/* Profile Tab */}
             {activeTab === "profile" && (
               <Card className="border shadow-sm">

@@ -4,7 +4,9 @@ const { ObjectId } = mongoose.Schema;
 // Define IOrderItem interface for TypeScript
 export interface IOrderItem {
   _id?: string;
-  product: mongoose.Types.ObjectId | string;
+  product?: mongoose.Types.ObjectId | string;
+  sample?: mongoose.Types.ObjectId | string;
+  isSample?: boolean;
   name: string;
   vendor?: object;
   image: string;
@@ -109,7 +111,16 @@ const OrderItemSchema = new mongoose.Schema({
   product: {
     type: ObjectId,
     ref: "Product",
-    required: true,
+    required: false,
+  },
+  sample: {
+    type: ObjectId,
+    ref: "Sample",
+    required: false,
+  },
+  isSample: {
+    type: Boolean,
+    default: false,
   },
   name: {
     type: String,

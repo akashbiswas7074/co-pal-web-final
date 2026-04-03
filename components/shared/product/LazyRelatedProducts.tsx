@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import InfiniteScroll from '@/components/shared/InfiniteScroll';
-import { LazyProductCard } from '@/components/shared/product/LazyProductCard';
+import { LazyProductCardSmall } from '@/components/shared/product/LazyProductCardSmall';
 
 interface RelatedProductsProps {
   productId: string;
@@ -26,12 +26,12 @@ const LazyRelatedProducts: React.FC<RelatedProductsProps> = ({
 
   const loadMoreProducts = async () => {
     if (loading || !hasMore) return;
-    
+
     try {
       setLoading(true);
       const nextPage = page + 1;
       const newProducts = await fetchMoreRelatedProducts(nextPage, 4, productId, category);
-      
+
       if (newProducts && Array.isArray(newProducts) && newProducts.length > 0) {
         setProducts(prevProducts => [...prevProducts, ...newProducts]);
         setPage(nextPage);
@@ -55,7 +55,7 @@ const LazyRelatedProducts: React.FC<RelatedProductsProps> = ({
   return (
     <div className="w-full py-10">
       <h2 className="text-2xl font-bold mb-6">{title}</h2>
-      
+
       <InfiniteScroll
         loadMore={loadMoreProducts}
         hasMore={hasMore}
@@ -67,7 +67,7 @@ const LazyRelatedProducts: React.FC<RelatedProductsProps> = ({
       >
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {products.map((product, index) => (
-            <LazyProductCard
+            <LazyProductCardSmall
               key={product.id || `related-product-${index}`}
               product={product}
               index={index}

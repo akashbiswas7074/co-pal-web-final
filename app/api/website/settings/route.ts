@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       settings: {
-        siteName: "Electrophilic",
-        siteDescription: "Welcome to Electrophilic.in – Where Innovation Begins! Step into the world of electronics with the ultimate destination for makers, tinkerers, and tech enthusiasts.",
+        siteName: "E-Commerce",
+        siteDescription: "Welcome to E-Commerce - Electronics Components Store",
         siteKeywords: ["electronics", "components", "microcontrollers", "sensors", "DIY"],
-        defaultTitle: "Electrophilic - Electronics Components Store",
+        defaultTitle: "E-Commerce - Electronics Components Store",
         titleSeparator: " | ",
         ogType: "website",
         twitterCard: "summary_large_image",
