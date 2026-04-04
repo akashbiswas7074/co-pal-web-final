@@ -61,8 +61,10 @@
     "jotai": "^2.8.0",
     "jsonwebtoken": "^9.0.2",
     "leaflet": "^1.9.4",
+    "@types/leaflet": "^1.9.21",
     "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
+    "@types/lodash.debounce": "^4.0.9",
     "lucide-react": "^0.445.0",
     "mongoose": "^8.8.2",
     "next": "^16.1.1",
@@ -83,6 +85,7 @@
     "react-markdown": "^10.1.0",
     "react-otp-input": "^3.1.1",
     "react-toastify": "^11.0.5",
+    "@types/react-toastify": "^4.0.2",
     "react-transition-group": "^4.4.5",
     "resend": "^4.4.1",
     "sonner": "^1.7.4",
@@ -97,9 +100,6 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
-    "@types/leaflet": "^1.9.21",
-    "@types/lodash.debounce": "^4.0.9",
-    "@types/react-toastify": "^4.0.2",
     "assert": "^2.1.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
