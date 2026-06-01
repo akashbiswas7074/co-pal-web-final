@@ -6,6 +6,7 @@ import Order, { IOrderItem } from "@/lib/database/models/order.model";
 import mongoose from "mongoose";
 import User from "@/lib/database/models/user.model";
 import { sendAdminNotificationEmail } from "@/lib/email"; // Add this import for email notification
+import { getActiveWebsiteSettings } from "@/lib/database/actions/website.settings.actions";
 
 // This endpoint handles cancel requests for products that are already confirmed
 export async function POST(req: NextRequest) {
@@ -62,8 +63,10 @@ export async function POST(req: NextRequest) {
       // Find all admin users to notify
       const adminUsers = await User.find({ role: 'admin' }).select('email');
       
-      // Get administrator email from environment variables as fallback
-      const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_FROM || null;
+      // Get administrator email from database or environment variables as fallback
+      const settingsResult = await getActiveWebsiteSettings();
+      const settings = settingsResult?.success ? settingsResult.settings : null;
+      const adminEmail = settings?.adminEmail || process.env.ADMIN_EMAIL || process.env.EMAIL_FROM || null;
       
       // Use first admin from DB or fallback to env var
       const adminToNotify = adminUsers.length > 0 ? adminUsers[0].email : adminEmail;

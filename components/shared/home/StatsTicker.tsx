@@ -79,12 +79,22 @@ export default function StatsTicker() {
                         {duplicated.map((item, i) => (
                             <div
                                 key={i}
-                                className="flex items-center gap-2 text-white font-bold tracking-widest uppercase"
+                                className="flex items-center gap-2 font-bold tracking-widest uppercase"
                                 style={{ fontSize: '13px' }}
                             >
-                                <span className="text-base md:text-lg">{item.emoji}</span>
-                                <span className="text-[11px] md:text-[14px]">{item.label}</span>
-                                <span style={{ marginLeft: '16px', opacity: 0.4 }}>•</span>
+                                <span
+                                    className="text-base md:text-lg"
+                                    style={{ color: item.iconColor || '#ffffff' }}
+                                >
+                                    {item.emoji}
+                                </span>
+                                <span
+                                    className="text-[11px] md:text-[14px]"
+                                    style={{ color: item.textColor || '#ffffff' }}
+                                >
+                                    {item.label}
+                                </span>
+                                <span style={{ marginLeft: '16px', opacity: 0.4, color: '#ffffff' }}>•</span>
                             </div>
                         ))}
                     </motion.div>

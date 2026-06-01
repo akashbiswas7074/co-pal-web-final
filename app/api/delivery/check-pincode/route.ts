@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 export async function GET(request: NextRequest) {
   let pincode: string | null = null;
@@ -23,7 +24,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if we have the auth token
-    const authToken = process.env.DELHIVERY_AUTH_TOKEN;
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const authToken = settings?.delhiveryApiToken || process.env.DELHIVERY_AUTH_TOKEN;
+    
     if (!authToken) {
       // Development fallback - mock some responses
       if (process.env.NODE_ENV === 'development') {

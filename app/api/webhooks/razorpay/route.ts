@@ -6,11 +6,14 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { handleError } from '@/lib/utils';
 
-// You'll need to set this in your environment variables
-const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 export async function POST(req: NextRequest) {
   console.log("[Webhook /api/webhooks/razorpay] Received request");
+
+  const settingsResult = await getActiveWebsiteSettings();
+  const settings = settingsResult.success ? settingsResult.settings : null;
+  const RAZORPAY_WEBHOOK_SECRET = settings?.razorpayWebhookSecret || process.env.RAZORPAY_WEBHOOK_SECRET;
 
   if (!RAZORPAY_WEBHOOK_SECRET) {
     console.error("[Webhook] Razorpay webhook secret is not configured.");

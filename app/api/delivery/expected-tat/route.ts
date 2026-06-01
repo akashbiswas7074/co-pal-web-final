@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 /**
  * Expected TAT API - Delhivery Integration
@@ -21,11 +22,15 @@ export async function GET(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url);
-    const origin_pin = searchParams.get('origin_pin');
+    const origin_pin_param = searchParams.get('origin_pin');
     const destination_pin = searchParams.get('destination_pin');
     const mot = searchParams.get('mot') || 'S'; // Surface by default
     const pdt = searchParams.get('pdt') || 'B2C'; // B2C by default
     const expected_pickup_date = searchParams.get('expected_pickup_date');
+
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const origin_pin = settings?.warehousePincode || origin_pin_param || process.env.NEXT_PUBLIC_WAREHOUSE_PINCODE || '700001';
 
     console.log('[Expected TAT API] Request params:', {
       origin_pin,
@@ -95,7 +100,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    const token = process.env.DELHIVERY_AUTH_TOKEN;
+    const token = settings?.delhiveryApiToken || process.env.DELHIVERY_AUTH_TOKEN;
     if (!token) {
       console.error('[Expected TAT API] Delhivery auth token not found in environment variables');
       

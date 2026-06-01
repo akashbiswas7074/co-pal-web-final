@@ -16,20 +16,6 @@ import { usePathname } from "next/navigation";
 // Loading skeleton for the main footer content
 const FooterContentSkeleton = () => (
   <div className="footer-wrapper animate-pulse">
-    {/* Subscribe banner skeleton */}
-    <div className="subscribe-banner" style={{ background: '#2563eb', padding: '32px 24px' }}>
-      <div style={{ maxWidth: '80rem', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <div className="h-4 w-40 bg-blue-300 rounded mb-2"></div>
-          <div className="h-8 w-64 bg-blue-300 rounded mb-2"></div>
-          <div className="h-4 w-80 bg-blue-300 rounded"></div>
-        </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          <div className="flex-1 h-12 bg-blue-300 rounded-full"></div>
-          <div className="w-32 h-12 bg-blue-200 rounded-full"></div>
-        </div>
-      </div>
-    </div>
     {/* Main footer skeleton */}
     <div style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #1a1a2e 100%)', padding: '48px 24px' }}>
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
@@ -94,38 +80,108 @@ const LinksSkeleton = ({ title, count = 5 }: { title: string; count?: number }) 
   </div>
 );
 
-// Subscribe Banner at top of footer
-const SubscribeBanner = () => {
+// Social Ticker — scrolling marquee bar linking to Facebook / Instagram from footer DB
+const SocialBanners = () => {
+  const { footer, isLoading } = useWebsiteFooter();
+
+  if (isLoading) return null;
+
+  const facebookUrl = footer?.socialMedia?.facebook;
+  const instagramUrl = footer?.socialMedia?.instagram;
+
+  if (!facebookUrl && !instagramUrl) return null;
+
+  // Build repeating items for the marquee
+  const items: Array<{ type: 'facebook' | 'instagram'; url: string }> = [];
+  if (facebookUrl) items.push({ type: 'facebook', url: facebookUrl });
+  if (instagramUrl) items.push({ type: 'instagram', url: instagramUrl });
+  // Duplicate enough times for seamless scroll
+  const duplicated = [...items, ...items, ...items, ...items, ...items, ...items];
+
   return (
-    <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-700 py-8 px-4 sm:px-6">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="w-full md:w-auto md:flex-1">
-          <p className="text-blue-200 text-xs sm:text-sm font-medium tracking-wider uppercase mb-1.5">
-            Newsletter Signup
-          </p>
-          <h2 className="text-white text-2xl sm:text-3xl font-bold mb-1.5 sm:mb-2 leading-tight">
-            Subscribe & Save
-          </h2>
-          <p className="text-blue-100 text-sm max-w-md">
-            Be first to experience new creations, special offers, and limited releases.
-          </p>
-        </div>
-        <div className="flex w-full md:w-auto md:flex-1 max-w-md">
-          <input
-            type="email"
-            placeholder="Enter Your Email Address"
-            className="flex-1 w-full min-w-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-l-full border-none outline-none text-sm text-slate-800 bg-white/95"
-          />
-          <button
-            className="px-5 py-3 sm:px-7 sm:py-3.5 rounded-r-full border-2 border-l-0 border-white/50 bg-transparent text-white font-bold text-sm tracking-widest whitespace-nowrap transition-colors hover:bg-white/15 focus:outline-none flex-shrink-0"
+    <div
+      className="relative w-full overflow-hidden"
+      style={{
+        background: facebookUrl && instagramUrl
+          ? 'linear-gradient(90deg, #1877F2 0%, #833AB4 40%, #E1306C 70%, #F77737 100%)'
+          : facebookUrl
+          ? 'linear-gradient(90deg, #1877F2 0%, #0d5fd8 100%)'
+          : 'linear-gradient(90deg, #833AB4 0%, #E1306C 60%, #F77737 100%)',
+        padding: '10px 0',
+      }}
+    >
+      {/* Scrolling marquee */}
+      <div
+        className="flex gap-0 whitespace-nowrap"
+        style={{
+          display: 'flex',
+          animation: 'social-ticker-scroll 30s linear infinite',
+          width: 'max-content',
+        }}
+      >
+        {duplicated.map((item, i) => (
+          <a
+            key={i}
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 px-8"
+            style={{ textDecoration: 'none', flexShrink: 0 }}
           >
-            Subscribe
-          </button>
-        </div>
+            {item.type === 'facebook' ? (
+              <>
+                {/* Facebook icon — clean white F on blue circle */}
+                <span
+                  className="inline-flex items-center justify-center rounded-full flex-shrink-0"
+                  style={{ width: 32, height: 32, background: '#fff' }}
+                >
+                  <svg viewBox="0 0 24 24" width={18} height={18} fill="#1877F2">
+                    <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.696 4.533-4.696 1.313 0 2.686.235 2.686.235v2.97h-1.513c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                  </svg>
+                </span>
+                <span className="font-bold text-white text-sm tracking-wide">Follow on Facebook</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', margin: '0 4px' }}>•</span>
+              </>
+            ) : (
+              <>
+                {/* Instagram icon — clean camera outline on white circle */}
+                <span
+                  className="inline-flex items-center justify-center rounded-full flex-shrink-0"
+                  style={{ width: 32, height: 32, background: '#fff' }}
+                >
+                  <svg viewBox="0 0 24 24" width={18} height={18} fill="none">
+                    <defs>
+                      <linearGradient id="ig-grad-footer" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#F77737"/>
+                        <stop offset="40%" stopColor="#E1306C"/>
+                        <stop offset="70%" stopColor="#C13584"/>
+                        <stop offset="100%" stopColor="#833AB4"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="url(#ig-grad-footer)" strokeWidth="2" fill="none"/>
+                    <circle cx="12" cy="12" r="4" stroke="url(#ig-grad-footer)" strokeWidth="2" fill="none"/>
+                    <circle cx="17.5" cy="6.5" r="1.2" fill="url(#ig-grad-footer)"/>
+                  </svg>
+                </span>
+                <span className="font-bold text-white text-sm tracking-wide">Follow on Instagram</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', margin: '0 4px' }}>•</span>
+              </>
+            )}
+          </a>
+        ))}
       </div>
+
+      {/* Keyframe animation injected via style tag */}
+      <style>{`
+        @keyframes social-ticker-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
     </div>
   );
 };
+
 
 // Loading skeleton for newsletter subscription (kept for inside-footer fallback)
 const NewsletterSkeleton = () => (
@@ -403,8 +459,8 @@ export default function Footer() {
 
   return (
     <div className="footer-wrapper">
-      {/* Subscribe Banner — sits on top of the footer */}
-      <SubscribeBanner />
+      {/* Social Banners — Facebook/Instagram, from footer backend */}
+      <SocialBanners />
 
       {/* Main Footer with custom styling */}
       <footer style={{

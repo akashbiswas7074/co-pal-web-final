@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/database/connect';
 import User from '@/lib/database/models/user.model';
 import jwt from 'jsonwebtoken';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +20,10 @@ export async function POST(req: NextRequest) {
     const formattedPhone = phone.trim().replace(/\s+/g, '');
     
     // Verify the token (this would be a token received after OTP verification)
-    const secret = process.env.NEXTAUTH_SECRET;
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const secret = settings?.nextAuthSecret || process.env.NEXTAUTH_SECRET;
+
     if (!secret) {
       return NextResponse.json({ 
         success: false, 

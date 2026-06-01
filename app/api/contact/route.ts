@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendGenericEmail } from '@/lib/email';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,9 +21,10 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get the admin email from environment variable, fallback to a default
-    // Make sure this is different from EMAIL_SERVER_USER to avoid emails being sent to yourself
-    const adminEmail = process.env.ADMIN_EMAIL || 'contact@vibecart.com';
+    // Get the admin email from database or environment variable
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const adminEmail = settings?.adminEmail || process.env.ADMIN_EMAIL || 'contact@vibecart.com';
     
     // Format the email subject
     const emailSubject = `Contact Form: ${subject}`;

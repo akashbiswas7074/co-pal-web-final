@@ -6,6 +6,7 @@ interface ShippingInfoProps {
   isCalculating: boolean;
   error?: string | null;
   destinationPincode?: string;
+  originPincode?: string;
   paymentMethod?: 'cod' | 'razorpay';
 }
 
@@ -14,6 +15,7 @@ export default function ShippingInfo({
   isCalculating, 
   error, 
   destinationPincode,
+  originPincode,
   paymentMethod = 'razorpay'
 }: ShippingInfoProps) {
   return (
@@ -51,6 +53,13 @@ export default function ShippingInfo({
                 <span className="text-sm text-gray-600">Destination:</span>
                 <span className="text-sm font-medium">{destinationPincode}</span>
               </div>
+              
+              {originPincode && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Origin Warehouse:</span>
+                  <span className="text-sm font-medium">{originPincode}</span>
+                </div>
+              )}
               
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Payment Method:</span>

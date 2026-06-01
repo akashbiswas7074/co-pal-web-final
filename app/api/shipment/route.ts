@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/database/connect';
 import Order from '@/lib/database/models/order.model';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 /**
  * Delhivery Shipment Creation API
@@ -69,7 +70,7 @@ interface DelhiveryShipmentPayload {
 }
 
 // Helper function to create Delhivery shipment payload
-function createShipmentPayload(order: any, shipmentData: ShipmentData): DelhiveryShipmentPayload {
+function createShipmentPayload(order: any, shipmentData: ShipmentData, settings: any): DelhiveryShipmentPayload {
   const shippingAddress = order.shippingAddress || order.deliveryAddress;
   const totalQuantity = order.orderItems?.reduce((sum: number, item: any) => sum + (item.qty || item.quantity || 1), 0) || 1;
   const productsDesc = order.orderItems?.map((item: any) => item.name).join(', ') || 'Order Items';
@@ -93,7 +94,7 @@ function createShipmentPayload(order: any, shipmentData: ShipmentData): Delhiver
     phone: shippingAddress.phoneNumber,
     order: order._id.toString(),
     payment_mode: paymentMode,
-    return_pin: process.env.NEXT_PUBLIC_WAREHOUSE_PINCODE || '700001',
+    return_pin: settings?.warehousePincode || process.env.NEXT_PUBLIC_WAREHOUSE_PINCODE || '700001',
     return_city: process.env.WAREHOUSE_RETURN_CITY || 'Kolkata',
     return_phone: process.env.WAREHOUSE_RETURN_PHONE || '9999999999',
     return_add: process.env.WAREHOUSE_RETURN_ADDRESS || 'Warehouse Address',
@@ -105,7 +106,7 @@ function createShipmentPayload(order: any, shipmentData: ShipmentData): Delhiver
     order_date: order.createdAt ? new Date(order.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     total_amount: (order.total || order.totalAmount || 0).toString(),
     seller_add: process.env.SELLER_ADDRESS || process.env.WAREHOUSE_RETURN_ADDRESS || 'Warehouse Address',
-    seller_name: process.env.SELLER_NAME || process.env.COMPANY_NAME || 'VibeCart',
+    seller_name: settings?.companyName || process.env.SELLER_NAME || process.env.COMPANY_NAME || 'VibeCart',
     seller_inv: `INV-${order._id}`,
     quantity: totalQuantity.toString(),
     shipment_width: shipmentData.dimensions?.width?.toString() || '10',
@@ -121,10 +122,10 @@ function createShipmentPayload(order: any, shipmentData: ShipmentData): Delhiver
 }
 
 // Helper function to call Delhivery API
-async function createDelhiveryShipment(shipmentPayload: DelhiveryShipmentPayload, pickupLocation: string) {
-  const token = process.env.DELHIVERY_AUTH_TOKEN;
+async function createDelhiveryShipment(shipmentPayload: DelhiveryShipmentPayload, pickupLocation: string, settings: any) {
+  const token = settings?.delhiveryApiToken || process.env.DELHIVERY_AUTH_TOKEN;
   if (!token) {
-    throw new Error('Delhivery auth token not configured');
+    throw new Error('Delhivery auth token not configured in database or environment variables');
   }
 
   // Use production URL
@@ -167,13 +168,15 @@ async function createDelhiveryShipment(shipmentPayload: DelhiveryShipmentPayload
   return responseData;
 }
 
-// POST: Create shipment
 export async function POST(request: NextRequest) {
   console.log('[Shipment API] POST request received');
   
   try {
     await connectToDatabase();
     
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+
     const body: ShipmentData = await request.json();
     const { orderId, shippingMode, weight, dimensions, pickupLocation } = body;
 
@@ -228,12 +231,13 @@ export async function POST(request: NextRequest) {
       weight,
       dimensions,
       pickupLocation
-    });
+    }, settings);
 
     // Call Delhivery API
     const delhiveryResponse = await createDelhiveryShipment(
       shipmentPayload, 
-      pickupLocation || process.env.WAREHOUSE_RETURN_ADDRESS || 'Default Warehouse'
+      pickupLocation || process.env.WAREHOUSE_RETURN_ADDRESS || 'Default Warehouse',
+      settings
     );
 
     // Check if Delhivery response is successful

@@ -2,6 +2,7 @@ import { connectToDatabase } from "./database/connect";
 import User from "./database/models/user.model";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { getActiveWebsiteSettings } from "./database/actions/website.settings.actions";
 
 /**
  * Interface for OTP verification results
@@ -40,10 +41,12 @@ interface Fast2SMSResponse {
 async function sendSMSOTP(phone: string, otp: string): Promise<OTPSendResult> {
   try {
     // Fast2SMS API settings
-    const apiKey = process.env.FAST2SMS_API_KEY;
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const apiKey = settings?.fast2smsApiKey || process.env.FAST2SMS_API_KEY;
     
     if (!apiKey) {
-      console.error("FAST2SMS_API_KEY is not configured in environment variables");
+      console.error("FAST2SMS_API_KEY is not configured in database or environment variables");
       return { success: false, message: "SMS service is not properly configured" };
     }
 
@@ -120,10 +123,12 @@ async function sendSMSOTP(phone: string, otp: string): Promise<OTPSendResult> {
 async function sendWhatsAppOTP(phone: string, otp: string): Promise<OTPSendResult> {
   try {
     // Fast2SMS API settings for WhatsApp
-    const apiKey = process.env.FAST2SMS_API_KEY;
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const apiKey = settings?.fast2smsApiKey || process.env.FAST2SMS_API_KEY;
     
     if (!apiKey) {
-      console.error("FAST2SMS_API_KEY is not configured in environment variables");
+      console.error("FAST2SMS_API_KEY is not configured in database or environment variables");
       return { success: false, message: "WhatsApp service is not properly configured" };
     }
     

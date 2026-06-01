@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { delhiveryApi } from '@/lib/utils/delivery-partner';
 import { connectToDatabase } from '@/lib/database/connect';
 import Order from '@/lib/database/models/Order';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 export async function POST(request: Request) {
   try {
@@ -20,8 +21,11 @@ export async function POST(request: Request) {
 
     switch (action) {
       case 'create_manifest':
+        const settingsResult = await getActiveWebsiteSettings();
+        const settings = settingsResult?.success ? settingsResult.settings : null;
+
         const manifestResult = await delhiveryApi.createManifest({
-          warehouseName: process.env.DELHIVERY_WAREHOUSE_NAME,
+          warehouseName: settings?.warehouseName || process.env.DELHIVERY_WAREHOUSE_NAME,
           paymentMode: order.paymentMethod === 'cod' ? 'cod' : 'prepaid',
           weight: order.totalWeight,
           shippingAddress: order.shippingAddress

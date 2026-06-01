@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/database/connect';
 import Order from '@/lib/database/models/order.model';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 /**
  * Complete Shipment Edit API
@@ -51,10 +52,10 @@ function canEditShipment(status: string): boolean {
 }
 
 // Helper function to call Delhivery Edit API
-async function editDelhiveryShipment(editPayload: DelhiveryEditPayload) {
-  const token = process.env.DELHIVERY_AUTH_TOKEN;
+async function editDelhiveryShipment(editPayload: DelhiveryEditPayload, settings: any) {
+  const token = settings?.delhiveryApiToken || process.env.DELHIVERY_AUTH_TOKEN;
   if (!token) {
-    throw new Error('Delhivery auth token not configured');
+    throw new Error('Delhivery auth token not configured in database or environment variables');
   }
 
   // Use production URL for edit
@@ -90,13 +91,15 @@ async function editDelhiveryShipment(editPayload: DelhiveryEditPayload) {
   return responseData;
 }
 
-// POST: Edit shipment
 export async function POST(request: NextRequest) {
   console.log('[Shipment Edit API] POST request received');
   
   try {
     await connectToDatabase();
     
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+
     const body: ShipmentEditData = await request.json();
     const { orderId, waybillNumber, editData } = body;
 
@@ -163,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     // Call Delhivery Edit API
     try {
-      const delhiveryResponse = await editDelhiveryShipment(editPayload);
+      const delhiveryResponse = await editDelhiveryShipment(editPayload, settings);
 
       // Check if Delhivery response is successful
       if (delhiveryResponse.error || !delhiveryResponse.success) {

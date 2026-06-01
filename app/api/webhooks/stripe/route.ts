@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/database/connect";
 import Order from "@/lib/database/models/order.model";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
+import { getActiveWebsiteSettings } from "@/lib/database/actions/website.settings.actions";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 export async function POST(req: Request) {
@@ -13,10 +14,15 @@ export async function POST(req: Request) {
   let event;
 
   try {
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const webhookSecret = settings?.stripeSecretWebhook || process.env.STRIPE_SECRET_WEBHOOK as string;
+    
+    const stripe = await getStripe();
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_SECRET_WEBHOOK as string
+      webhookSecret
     );
   } catch (error: unknown) {
     return new Response("Webhook Error", { status: 400 });

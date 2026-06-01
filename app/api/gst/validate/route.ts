@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 /**
  * GST Validation API - Production Ready Structure
@@ -14,10 +15,13 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
 
         // Config from Environment Variables
-        const CLIENT_ID = process.env.GST_CLIENT_ID;
-        const CLIENT_SECRET = process.env.GST_CLIENT_SECRET;
-        const USERNAME = process.env.GST_USERNAME;
-        const STATE_CD = process.env.GST_STATE_CD || '27'; // Default Maharashtra
+        const settingsResult = await getActiveWebsiteSettings();
+        const settings = settingsResult?.success ? settingsResult.settings : null;
+
+        const CLIENT_ID = settings?.gstClientId || process.env.GST_CLIENT_ID;
+        const CLIENT_SECRET = settings?.gstClientSecret || process.env.GST_CLIENT_SECRET;
+        const USERNAME = settings?.gstUsername || process.env.GST_USERNAME;
+        const STATE_CD = settings?.gstStateCode || process.env.GST_STATE_CD || '27'; // Default Maharashtra
 
         let gstin = "";
         if (body.data) {

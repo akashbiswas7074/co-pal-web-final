@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { getAllProducts } from "@/lib/database/actions/product.actions";
 import { connectToDatabase } from "@/lib/database/connect";
+import { getActiveWebsiteSettings } from "@/lib/database/actions/website.settings.actions";
 
-const getGeminiApiKeys = () => {
+const getGeminiApiKeys = async () => {
+  const settingsResult = await getActiveWebsiteSettings();
+  const settings = settingsResult?.success ? settingsResult.settings : null;
+
   return [
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY_2,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY_3,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY_4,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY_5,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY_6,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY_7,
+    settings?.geminiApiKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+    settings?.geminiApiKey2 || process.env.NEXT_PUBLIC_GEMINI_API_KEY_2,
+    settings?.geminiApiKey3 || process.env.NEXT_PUBLIC_GEMINI_API_KEY_3,
+    settings?.geminiApiKey4 || process.env.NEXT_PUBLIC_GEMINI_API_KEY_4,
+    settings?.geminiApiKey5 || process.env.NEXT_PUBLIC_GEMINI_API_KEY_5,
+    settings?.geminiApiKey6 || process.env.NEXT_PUBLIC_GEMINI_API_KEY_6,
+    settings?.geminiApiKey7 || process.env.NEXT_PUBLIC_GEMINI_API_KEY_7,
   ].filter(Boolean) as string[];
 };
 
@@ -58,7 +62,7 @@ async function getProductsData() {
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKeys = getGeminiApiKeys();
+    const apiKeys = await getGeminiApiKeys();
 
     if (apiKeys.length === 0) {
       return NextResponse.json(

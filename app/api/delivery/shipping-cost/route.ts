@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { qualifiesForFreeShipping } from '@/lib/utils/shipping';
+import { qualifiesForFreeShipping, getStateFromPincode, calculateWeightBasedShippingCharge } from '@/lib/utils/shipping';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { 
       destinationPincode, 
-      originPincode, 
+      originPincode, // Will be overridden by backend
       weight, 
       paymentMode,
       totalValue,
-      shippingService = 'E' // E for Express, S for Surface
+      shippingService = 'E', // E for Express, S for Surface
+      stateName
     } = body;
+
+    const { settings } = await getActiveWebsiteSettings();
+    // Always use DB value first — never rely on client-provided originPincode
+    const effectiveOriginPincode = (settings?.warehousePincode as string) || process.env.NEXT_PUBLIC_WAREHOUSE_PINCODE || '700001';
 
     // Check for free shipping first if totalValue is provided
     if (totalValue !== undefined) {
@@ -28,26 +34,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate required fields
-    if (!destinationPincode || !originPincode) {
+    // Validate required fields — only destinationPincode is required from the client
+    // originPincode is always resolved server-side from the database
+    if (!destinationPincode) {
       return NextResponse.json(
-        { error: 'Destination and origin pincode are required' },
+        { error: 'Destination pincode is required' },
         { status: 400 }
       );
     }
 
     // Validate pincode format
-    if (!/^\d{6}$/.test(destinationPincode) || !/^\d{6}$/.test(originPincode)) {
+    if (!/^\d{6}$/.test(destinationPincode) || !/^\d{6}$/.test(effectiveOriginPincode)) {
       return NextResponse.json(
         { error: 'Please enter valid 6-digit pincodes' },
         { status: 400 }
       );
     }
 
+    // Check for custom weight-based shipping settings
+    if (settings && settings.useWeightBasedShipping) {
+      const state = stateName || getStateFromPincode(destinationPincode);
+      const weightInGrams = Number(weight) || 500;
+      const customCost = calculateWeightBasedShippingCharge(weightInGrams, state, settings.stateShippingCharges);
+      
+      console.log(`[ShippingAPI] Using custom weight-based shipping for ${state} (weight: ${weightInGrams}g): ₹${customCost}`);
+      return NextResponse.json({
+        success: true,
+        cost: customCost,
+        service: shippingService,
+        paymentMode,
+        origin: effectiveOriginPincode,
+        message: `Calculated custom weight-based shipping cost for ${state}`
+      });
+    }
+
     // Get auth token
-    const authToken = process.env.DELHIVERY_AUTH_TOKEN;
+    const authToken = settings?.delhiveryApiToken || process.env.DELHIVERY_AUTH_TOKEN;
     if (!authToken) {
-      console.error('DELHIVERY_AUTH_TOKEN not configured');
+      console.error('DELHIVERY_AUTH_TOKEN not configured in database or environment variables');
       
       // Development fallback
       if (process.env.NODE_ENV === 'development') {
@@ -60,6 +84,7 @@ export async function POST(request: NextRequest) {
           cost: mockCost,
           service: shippingService,
           paymentMode,
+          origin: effectiveOriginPincode,
           dev_mode: true,
           message: 'Using mock shipping cost (Dev Mode)'
         });
@@ -100,7 +125,7 @@ export async function POST(request: NextRequest) {
       md: shippingService, // E for Express, S for Surface
       ss: 'Delivered', // Status for cost calculation
       d_pin: destinationPincode,
-      o_pin: originPincode,
+      o_pin: effectiveOriginPincode,
       cgm: weightInGrams.toString(),
       pt: paymentMode || 'Pre-paid'
     });
@@ -151,6 +176,7 @@ export async function POST(request: NextRequest) {
           cost: parseFloat(cost),
           service: shippingService,
           paymentMode,
+          origin: effectiveOriginPincode,
           raw_response: prodData[0]
         });
       }
@@ -169,6 +195,7 @@ export async function POST(request: NextRequest) {
           cost: fallbackCost,
           service: shippingService,
           paymentMode,
+          origin: effectiveOriginPincode,
           fallback_mode: true,
           message: 'Using fallback shipping cost due to API authentication issue'
         });
@@ -192,6 +219,7 @@ export async function POST(request: NextRequest) {
       cost: parseFloat(cost),
       service: shippingService,
       paymentMode,
+      origin: effectiveOriginPincode,
       raw_response: data[0]
     });
 
@@ -209,3 +237,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/database/connect';
 import Order, { IOrderItem } from '@/lib/database/models/order.model'; // Changed IOrderProduct to IOrderItem
 import Cart from '@/lib/database/models/cart.model';
+import { getActiveWebsiteSettings } from '@/lib/database/actions/website.settings.actions';
 // import Razorpay from 'razorpay'; // Not directly used for instance, crypto is used
 import crypto from 'crypto';
 import mongoose from 'mongoose';
@@ -37,9 +38,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Missing required payment verification details.' }, { status: 400 });
     }
 
-    const razorpay_key_secret = process.env.RAZORPAY_KEY_SECRET;
+    const settingsResult = await getActiveWebsiteSettings();
+    const settings = settingsResult?.success ? settingsResult.settings : null;
+    const razorpay_key_secret = settings?.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET;
+    
     if (!razorpay_key_secret) {
-      console.error("[API /api/order/verify-payment] Razorpay key secret is not configured on the server.");
+      console.error("[API /api/order/verify-payment] Razorpay key secret is not configured in database or environment variables.");
       return NextResponse.json({ success: false, message: 'Server configuration error for payment verification.' }, { status: 500 });
     }
 

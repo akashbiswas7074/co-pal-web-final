@@ -107,6 +107,7 @@ export default function CheckoutComponent() {
   const [isLoading, setIsLoading] = useState(true);
   const [subTotal, setSubtotal] = useState<number>(0);
   const [shippingCost, setShippingCost] = useState<number>(0);
+  const [originPincode, setOriginPincode] = useState<string>("");
   const [isCalculatingShipping, setIsCalculatingShipping] = useState<boolean>(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [taxCost, setTaxCost] = useState<number>(0); // Example: No tax
@@ -560,7 +561,8 @@ export default function CheckoutComponent() {
         selectedAddress.zipCode,
         safeWeightGrams,
         shippingPaymentMode,
-        subTotal
+        subTotal,
+        selectedAddress.state
       );
 
       if (result.error) {
@@ -568,6 +570,9 @@ export default function CheckoutComponent() {
       }
 
       setShippingCost(result.cost);
+      if (result.originPincode) {
+        setOriginPincode(result.originPincode);
+      }
       setShippingError(null);
       console.log(`[calculateShippingForAddress] Shipping calculated for ${shippingPaymentMode}:`, result.cost);
     } catch (error) {
@@ -1924,6 +1929,7 @@ export default function CheckoutComponent() {
                   isCalculating={isCalculatingShipping}
                   error={shippingError}
                   destinationPincode={address.zipCode}
+                  originPincode={originPincode}
                   paymentMethod={paymentMethod}
                 />
                 <ExpectedDeliverySimple

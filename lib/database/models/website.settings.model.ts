@@ -68,15 +68,84 @@ export interface IWebsiteSettings extends Document {
   
   // Shipping Configuration
   freeShippingThreshold?: number;
+  useWeightBasedShipping: boolean;
+  stateShippingCharges?: {
+    stateName: string;
+    maxWeightGrams: number;
+    charge: number;
+  }[];
   
   // Payment Configuration
   razorpayKeyId?: string;
   razorpayKeySecret?: string;
   razorpayWebhookSecret?: string;
   bypassPayment: boolean;
-  
   // Status
   isActive: boolean;
+
+  // GST Configuration
+  gstClientId?: string;
+  gstClientSecret?: string;
+  gstUsername?: string;
+  gstPublicKey?: string;
+  gstStateCd?: string;
+  gstBaseUrl?: string;
+
+  // Google OAuth
+  googleClientId?: string;
+  googleClientSecret?: string;
+
+  // NextAuth
+  nextAuthSecret?: string;
+  nextAuthUrl?: string;
+
+  // Nodemailer SMTP
+  emailHost?: string;
+  emailPort?: number;
+  emailUser?: string;
+  emailPassword?: string;
+  emailFrom?: string;
+  adminEmail?: string;
+  companyName?: string;
+
+  // Cloudinary
+  cloudinaryName?: string;
+  cloudinaryApiKey?: string;
+  cloudinarySecret?: string;
+
+  // Stripe
+  stripeApiKey?: string;
+  stripeSecretWebhook?: string;
+
+  // SMS/Fast2SMS
+  fast2smsApiKey?: string;
+  dltTemplateId?: string;
+  dltEntityId?: string;
+
+  // Delhivery
+  delhiveryApiToken?: string;
+  delhiveryB2BUsername?: string;
+  delhiveryB2BPassword?: string;
+  warehousePincode?: string;
+
+  // Zoho Books
+  zohoClientId?: string;
+  zohoClientSecret?: string;
+  zohoRefreshToken?: string;
+  zohoOrganizationId?: string;
+
+  // Gemini API Keys
+  geminiApiKey?: string;
+  geminiApiKey2?: string;
+  geminiApiKey3?: string;
+  geminiApiKey4?: string;
+  geminiApiKey5?: string;
+  geminiApiKey6?: string;
+  geminiApiKey7?: string;
+
+  // GST Additions
+  businessState?: string;
+  businessGstin?: string;
   
   // Timestamps
   createdAt: Date;
@@ -254,6 +323,25 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>({
     type: Number,
     default: 0
   },
+  useWeightBasedShipping: {
+    type: Boolean,
+    default: false
+  },
+  stateShippingCharges: [{
+    stateName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    maxWeightGrams: {
+      type: Number,
+      required: true
+    },
+    charge: {
+      type: Number,
+      required: true
+    }
+  }],
   
   // Payment Configuration
   razorpayKeyId: {
@@ -272,6 +360,70 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>({
     type: Boolean,
     default: false
   },
+
+  // GST Configuration
+  gstClientId: { type: String, trim: true },
+  gstClientSecret: { type: String, trim: true },
+  gstUsername: { type: String, trim: true },
+  gstPublicKey: { type: String, trim: true },
+  gstStateCd: { type: String, default: '27' },
+  gstBaseUrl: { type: String, default: 'https://api.gst.gov.in' },
+
+  // Google OAuth
+  googleClientId: { type: String, trim: true },
+  googleClientSecret: { type: String, trim: true },
+
+  // NextAuth
+  nextAuthSecret: { type: String, trim: true },
+  nextAuthUrl: { type: String, trim: true },
+
+  // Nodemailer SMTP
+  emailHost: { type: String, trim: true },
+  emailPort: { type: Number },
+  emailUser: { type: String, trim: true },
+  emailPassword: { type: String, trim: true },
+  emailFrom: { type: String, trim: true },
+  adminEmail: { type: String, trim: true },
+  companyName: { type: String, trim: true },
+
+  // Cloudinary
+  cloudinaryName: { type: String, trim: true },
+  cloudinaryApiKey: { type: String, trim: true },
+  cloudinarySecret: { type: String, trim: true },
+
+  // Stripe
+  stripeApiKey: { type: String, trim: true },
+  stripeSecretWebhook: { type: String, trim: true },
+
+  // SMS/Fast2SMS
+  fast2smsApiKey: { type: String, trim: true },
+  dltTemplateId: { type: String, trim: true },
+  dltEntityId: { type: String, trim: true },
+
+  // Delhivery
+  delhiveryApiToken: { type: String, trim: true },
+  delhiveryB2BUsername: { type: String, trim: true },
+  delhiveryB2BPassword: { type: String, trim: true },
+  warehousePincode: { type: String, trim: true },
+
+  // Zoho Books
+  zohoClientId: { type: String, trim: true },
+  zohoClientSecret: { type: String, trim: true },
+  zohoRefreshToken: { type: String, trim: true },
+  zohoOrganizationId: { type: String, trim: true },
+
+  // Gemini API Keys
+  geminiApiKey: { type: String, trim: true },
+  geminiApiKey2: { type: String, trim: true },
+  geminiApiKey3: { type: String, trim: true },
+  geminiApiKey4: { type: String, trim: true },
+  geminiApiKey5: { type: String, trim: true },
+  geminiApiKey6: { type: String, trim: true },
+  geminiApiKey7: { type: String, trim: true },
+
+  // GST Additions
+  businessState: { type: String, trim: true },
+  businessGstin: { type: String, trim: true },
   
   // Status
   isActive: {
@@ -289,7 +441,7 @@ WebsiteSettingsSchema.index({ createdAt: -1 });
 // Force re-registration of the model if it exists but is missing new schema paths (useful for development)
 if (mongoose.models.WebsiteSettings) {
   const schema = (mongoose.models.WebsiteSettings as any).schema;
-  if (!schema.path('freeShippingThreshold') || !schema.path('razorpayKeyId') || !schema.path('bypassPayment')) {
+  if (!schema.path('freeShippingThreshold') || !schema.path('googleClientId') || !schema.path('gstClientId') || !schema.path('razorpayKeyId') || !schema.path('bypassPayment') || !schema.path('useWeightBasedShipping')) {
     delete (mongoose.models as any).WebsiteSettings;
   }
 }
