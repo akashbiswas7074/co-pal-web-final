@@ -4,7 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { getStatsTickerData } from '@/lib/database/actions/stats-ticker.actions';
 
-const defaultItems = [
+interface TickerItem {
+    emoji: string;
+    label: string;
+    iconColor?: string;
+    textColor?: string;
+}
+
+const defaultItems: TickerItem[] = [
     { emoji: '🌿', label: 'Vegan & Cruelty-Free' },
     { emoji: '💧', label: 'Long-Lasting Formula' },
     { emoji: '🤝', label: 'Handcrafted In The USA' },
@@ -16,7 +23,7 @@ const defaultItems = [
 ];
 
 export default function StatsTicker() {
-    const [items, setItems] = useState(defaultItems);
+    const [items, setItems] = useState<TickerItem[]>(defaultItems);
     const [backgroundColor, setBackgroundColor] = useState('linear-gradient(90deg, #22c9a0 0%, #7c3aed 50%, #e879f9 100%)');
     const [speed, setSpeed] = useState(28);
     const [loading, setLoading] = useState(true);

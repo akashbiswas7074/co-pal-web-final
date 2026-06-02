@@ -12,7 +12,7 @@ export async function getStatsTickerData() {
     try {
         await connectToDatabase();
 
-        let ticker = await StatsTicker.findOne({ isActive: true }).lean();
+        let ticker: any = await StatsTicker.findOne({ isActive: true }).lean();
 
         // If no ticker exists, return a default one
         if (!ticker) {

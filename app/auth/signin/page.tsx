@@ -18,7 +18,7 @@ import { useWebsiteLogo } from '@/hooks/use-website-logo';
 function SignInFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams?.get('callbackUrl') || '/';
+  const callbackUrl = searchParams?.get('callbackUrl') || '/shop';
   const error = searchParams?.get('error');
   const trigger = searchParams?.get('trigger');
   const verified = searchParams?.get('verified');

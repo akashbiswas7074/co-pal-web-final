@@ -792,10 +792,10 @@ export const authOptions: NextAuthOptions = {
 
      async redirect({ url, baseUrl }) {
         if (url.startsWith(baseUrl + "/api/auth/callback")) {
-          return `${baseUrl}/profile`;
+          return `${baseUrl}/shop`;
         }
         if (url === baseUrl || url === `${baseUrl}/`) {
-          return `${baseUrl}/profile`;
+          return `${baseUrl}/shop`;
         }
         if (url.startsWith("/")) return `${baseUrl}${url}`;
         else if (new URL(url).origin === baseUrl) return url;
