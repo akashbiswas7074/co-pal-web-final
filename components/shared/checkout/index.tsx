@@ -82,7 +82,7 @@ interface CheckoutData {
     country: string;
     phone: string; // Added phone
   };
-  paymentMethod: 'cod' | 'razorpay'; // Updated: Only COD or Razorpay
+  paymentMethod: 'cod' | 'razorpay' | 'cashfree'; // COD, Razorpay, or Cashfree
   itemsPrice: number;
   shippingPrice: number;
   taxPrice?: number;
@@ -99,7 +99,7 @@ export default function CheckoutComponent() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [coupon, setCoupon] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<CheckoutData['paymentMethod']>("razorpay"); // Default to Razorpay or COD
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutData['paymentMethod']>("cashfree"); // Default to Cashfree
   const [couponError, setCouponError] = useState("");
   const [totalAfterDiscount, setTotalAfterDiscount] = useState<number | null>(null); // Store as number
   const [discount, setDiscount] = useState(0);
@@ -493,7 +493,7 @@ export default function CheckoutComponent() {
   const cartItems: CartProduct[] = data?.products || [];
 
   // Calculate shipping cost dynamically based on selected address and payment method
-  const calculateShippingForAddress = async (selectedAddress: Address, paymentMode?: 'cod' | 'razorpay') => {
+  const calculateShippingForAddress = async (selectedAddress: Address, paymentMode?: 'cod' | 'razorpay' | 'cashfree') => {
     if (!selectedAddress || !selectedAddress.zipCode) {
       setShippingCost(0);
       setShippingError('Please select a delivery address');
@@ -659,6 +659,7 @@ export default function CheckoutComponent() {
     if (!paymentMethod) return "Select Payment Method";
     if (paymentMethod === "cod") return "Place Order (COD)";
     if (paymentMethod === "razorpay") return `Pay ₹${finalTotal.toFixed(2)} with Razorpay`;
+    if (paymentMethod === "cashfree") return `Pay ₹${finalTotal.toFixed(2)} with Cashfree`;
     return `Place Order (₹${finalTotal.toFixed(2)})`; // Fallback
   };
 
@@ -992,6 +993,102 @@ export default function CheckoutComponent() {
             console.error("[placeOrderHandler] Razorpay selected, but missing required details in API response. Response:", response);
             toast.error("Payment processing error. Missing Razorpay details from server.");
             setCheckoutError("Could not initiate Razorpay payment due to missing server details.");
+            setPlaceOrderLoading(false);
+          }
+        } else if (paymentMethod === 'cashfree') {
+          // Handle Payment Bypass
+          if (response.bypassed) {
+            console.log("[placeOrderHandler] Cashfree order bypassed payment. Redirecting...");
+            toast.success("Order placed successfully (Bypassed)!");
+            emptyCart();
+            router.push(`/order/${orderId}?status=cashfree_success&bypassed=true`);
+            return;
+          }
+
+          if (response.paymentSessionId) {
+            console.log("[placeOrderHandler] Cashfree paymentSessionId received. Loading SDK...");
+
+            const loadCashfreeScript = (): Promise<boolean> => {
+              return new Promise((resolve) => {
+                if ((window as any).Cashfree) {
+                  resolve(true);
+                  return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+                script.onload = () => resolve(true);
+                script.onerror = () => resolve(false);
+                document.body.appendChild(script);
+              });
+            };
+
+            const scriptLoaded = await loadCashfreeScript();
+            if (!scriptLoaded) {
+              console.error("Failed to load Cashfree SDK.");
+              toast.error("Payment gateway script failed to load. Please try again.");
+              setPlaceOrderLoading(false);
+              return;
+            }
+
+            toast.info("Opening Cashfree Checkout...");
+
+            try {
+              const cashfree = (window as any).Cashfree({
+                mode: response.environment || "sandbox"
+              });
+
+              cashfree.checkout({
+                paymentSessionId: response.paymentSessionId,
+                redirectTarget: "_modal"
+              }).then(async (result: any) => {
+                console.log("[Cashfree Checkout Result]:", result);
+                if (result.error) {
+                  console.error("Cashfree checkout error:", result.error);
+                  toast.error(result.error.message || "Payment cancelled or failed.");
+                  setPlaceOrderLoading(false);
+                  return;
+                }
+
+                if (result.paymentDetails || result.redirect) {
+                  toast.loading("Verifying Cashfree payment...");
+                  try {
+                    const verifyRes = await fetch('/api/order/verify-cashfree', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        orderId: orderId,
+                        cfOrderId: response.cfOrderId
+                      }),
+                      credentials: 'include'
+                    });
+                    const verifyData = await verifyRes.json();
+                    toast.dismiss();
+
+                    if (verifyRes.ok && verifyData.success) {
+                      toast.success("Payment Successful!");
+                      emptyCart();
+                      router.push(`/order/${orderId}?status=cashfree_success`);
+                    } else {
+                      toast.error(`Payment Verification Failed: ${verifyData.message || 'Please contact support.'}`);
+                      setCheckoutError(`Payment Verification Failed: ${verifyData.message || 'Contact support with Order ID: ' + orderId}`);
+                      setPlaceOrderLoading(false);
+                    }
+                  } catch (vErr: any) {
+                    toast.dismiss();
+                    console.error("Error verifying Cashfree payment:", vErr);
+                    toast.error("Verification failed. Please contact support.");
+                    setPlaceOrderLoading(false);
+                  }
+                }
+              });
+            } catch (cfInitError: any) {
+              console.error("Error initializing Cashfree SDK:", cfInitError);
+              toast.error("Could not initialize Cashfree gateway.");
+              setPlaceOrderLoading(false);
+            }
+          } else {
+            console.error("[placeOrderHandler] Cashfree selected but missing paymentSessionId:", response);
+            toast.error("Failed to initiate Cashfree checkout.");
             setPlaceOrderLoading(false);
           }
         } else {
@@ -1766,11 +1863,18 @@ export default function CheckoutComponent() {
                       )}
                     </div>
                   </Label>
+                  <Label htmlFor="cashfree" className={`flex items-center p-4 border rounded-md cursor-pointer transition-colors hover:border-gray-400 ${paymentMethod === 'cashfree' ? 'border-gray-500 bg-gray-50 ring-1 ring-gray-500' : 'border-gray-200'}`}>
+                    <RadioGroupItem value="cashfree" id="cashfree" />
+                    <div className="ml-3">
+                      <span className="font-medium">Cashfree Payments (UPI, Cards, Netbanking, Wallets)</span>
+                      <p className="text-xs text-muted-foreground">Fast & secure payments via Cashfree Payment Gateway.</p>
+                    </div>
+                  </Label>
                   <Label htmlFor="razorpay" className={`flex items-center p-4 border rounded-md cursor-pointer transition-colors hover:border-gray-400 ${paymentMethod === 'razorpay' ? 'border-gray-500 bg-gray-50 ring-1 ring-gray-500' : 'border-gray-200'}`}>
                     <RadioGroupItem value="razorpay" id="razorpay" />
                     <div className="ml-3">
                       <span className="font-medium">Razorpay (Prepaid)</span>
-                      <p className="text-xs text-muted-foreground">Pay online using Razorpay gateway. Lower shipping charges.</p>
+                      <p className="text-xs text-muted-foreground">Pay online using Razorpay gateway.</p>
                     </div>
                   </Label>
                 </RadioGroup>

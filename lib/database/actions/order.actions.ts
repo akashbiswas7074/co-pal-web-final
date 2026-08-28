@@ -33,7 +33,7 @@ interface CheckoutData {
     phone?: string;      // Added to allow 'phone' as input
     phoneNumber?: string; // Added to allow 'phoneNumber' as input and for internal assignment
   };
-  paymentMethod: 'razorpay' | 'cod'; // Updated: Only Razorpay or COD
+  paymentMethod: 'razorpay' | 'cashfree' | 'cod'; // Razorpay, Cashfree, or COD
   itemsPrice: number;
   shippingPrice: number;
   taxPrice?: number; // Optional tax price
@@ -469,9 +469,9 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
         await session.abortTransaction();
         return { success: false, message: `Failed to create pending order: ${saveError.message}`, error: saveError };
       }
-    } else if (paymentMethod === 'razorpay') {
+    } else if (paymentMethod === 'razorpay' || paymentMethod === 'cashfree') {
       // For non-COD orders, continue with the regular order creation
-      orderData.status = 'pending'; // For Razorpay, initial status is pending until payment
+      orderData.status = 'pending'; // Initial status is pending until payment
       orderData.paymentStatus = 'pending';
 
       const newOrder = new Order(orderData);
@@ -617,6 +617,117 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
         currency: rzrOrder.currency
       };
     }
+      else if (paymentMethod === 'cashfree' && savedOrder) {
+        console.log("[processCheckoutSteps] Cashfree payment selected. Creating Cashfree order...");
+
+        // Check for Payment Bypass
+        if (settings?.bypassPayment) {
+          console.log("[processCheckoutSteps] Payment Bypass enabled for Cashfree. Mocking success...");
+          savedOrder.status = 'Processing';
+          savedOrder.isPaid = true;
+          savedOrder.paymentStatus = 'paid';
+          savedOrder.paidAt = new Date();
+          savedOrder.paymentResult = {
+            id: 'cf_bypass_' + Date.now(),
+            status: 'SUCCESS',
+            email: user?.email || 'bypassed@example.com'
+          };
+          await savedOrder.save({ session });
+          await session.commitTransaction();
+          return {
+            success: true,
+            message: "Order placed successfully (Payment Bypassed)",
+            orderId: savedOrder._id.toString(),
+            bypassed: true
+          };
+        }
+
+        const cfAppId = settings?.cashfreeAppId || process.env.CASHFREE_APP_ID;
+        const cfSecretKey = settings?.cashfreeSecretKey || process.env.CASHFREE_SECRET_KEY;
+        const cfEnv = (settings?.cashfreeEnvironment || process.env.CASHFREE_ENV || 'sandbox').toLowerCase();
+
+        if (!cfAppId || !cfSecretKey) {
+          console.error("[processCheckoutSteps] Cashfree credentials missing");
+          await session.abortTransaction();
+          return { success: false, message: "Cashfree payment gateway is not properly configured." };
+        }
+
+        const baseUrl = cfEnv === 'production' 
+          ? 'https://api.cashfree.com/pg/orders' 
+          : 'https://sandbox.cashfree.com/pg/orders';
+
+        // Prepare phone number (strip spaces/symbols, ensure valid length)
+        let formattedPhone = (normalizedShippingAddress.phoneNumber || '9999999999').replace(/[^0-9]/g, '');
+        if (formattedPhone.length > 10) {
+          formattedPhone = formattedPhone.slice(-10);
+        }
+        if (formattedPhone.length < 10) {
+          formattedPhone = '9999999999';
+        }
+
+        const customerName = `${normalizedShippingAddress.firstName || ''} ${normalizedShippingAddress.lastName || ''}`.trim() || 'Customer';
+        let appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.peeds.in';
+        if (cfEnv === 'production' && appUrl.includes('localhost')) {
+          appUrl = 'https://www.peeds.in';
+        }
+
+        const cashfreePayload = {
+          order_id: savedOrder._id.toString(),
+          order_amount: Number(finalTotalPrice.toFixed(2)),
+          order_currency: 'INR',
+          customer_details: {
+            customer_id: userId.toString(),
+            customer_name: customerName,
+            customer_email: user?.email || 'customer@example.com',
+            customer_phone: formattedPhone
+          },
+          order_meta: {
+            return_url: `${appUrl}/order/${savedOrder._id.toString()}?order_id={order_id}`
+          }
+        };
+
+        console.log("[processCheckoutSteps] Sending request to Cashfree API:", baseUrl, JSON.stringify(cashfreePayload));
+
+        const cfResponse = await fetch(baseUrl, {
+          method: 'POST',
+          headers: {
+            'X-Client-Id': cfAppId,
+            'X-Client-Secret': cfSecretKey,
+            'x-api-version': '2025-01-01',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(cashfreePayload)
+        });
+
+        const cfData = await cfResponse.json();
+
+        if (!cfResponse.ok) {
+          console.error("[processCheckoutSteps] Cashfree API error:", cfData);
+          await session.abortTransaction();
+          return {
+            success: false,
+            message: cfData.message || "Failed to create payment session with Cashfree."
+          };
+        }
+
+        console.log("[processCheckoutSteps] Cashfree order created successfully:", cfData.order_id, cfData.payment_session_id);
+
+        savedOrder.cashfreeOrderId = cfData.order_id;
+        savedOrder.cashfreePaymentSessionId = cfData.payment_session_id;
+        await savedOrder.save({ session });
+
+        await session.commitTransaction();
+
+        return {
+          success: true,
+          message: "Order created, proceed to Cashfree payment.",
+          orderId: savedOrder._id.toString(),
+          cfOrderId: cfData.order_id,
+          paymentSessionId: cfData.payment_session_id,
+          environment: cfEnv
+        };
+      }
     else if (paymentMethod === 'cod' && savedPendingOrder) {
       await session.commitTransaction();
       console.log("[processCheckoutSteps] Transaction committed for pending COD order. Order ID:", savedPendingOrder._id.toString());
@@ -678,7 +789,7 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
   }
 }
 
-export async function handlePaymentSuccess(orderId: string, paymentResult: any, paymentMethod: 'razorpay' | 'cod') { // Updated paymentMethod type
+export async function handlePaymentSuccess(orderId: string, paymentResult: any, paymentMethod: 'razorpay' | 'cashfree' | 'cod') {
   await connectToDatabase();
   const session = await mongoose.startSession();
   session.startTransaction();

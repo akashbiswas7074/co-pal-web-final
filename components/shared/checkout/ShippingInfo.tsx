@@ -7,7 +7,7 @@ interface ShippingInfoProps {
   error?: string | null;
   destinationPincode?: string;
   originPincode?: string;
-  paymentMethod?: 'cod' | 'razorpay';
+  paymentMethod?: 'cod' | 'razorpay' | 'cashfree';
 }
 
 export default function ShippingInfo({ 
@@ -16,7 +16,7 @@ export default function ShippingInfo({
   error, 
   destinationPincode,
   originPincode,
-  paymentMethod = 'razorpay'
+  paymentMethod = 'cashfree'
 }: ShippingInfoProps) {
   return (
     <Card className="w-full">
@@ -64,7 +64,7 @@ export default function ShippingInfo({
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Payment Method:</span>
                 <span className="text-sm font-medium">
-                  {paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Razorpay (Prepaid)'}
+                  {paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : paymentMethod === 'cashfree' ? 'Cashfree (Prepaid)' : 'Razorpay (Prepaid)'}
                 </span>
               </div>
               

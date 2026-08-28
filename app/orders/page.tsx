@@ -374,6 +374,7 @@ export default function OrdersPage() {
                             <span className="font-medium">Method:</span> {
                               order.paymentMethod === "cod" ? "Cash on Delivery (COD)" :
                               order.paymentMethod === "razorpay" ? "Razorpay" :
+                              order.paymentMethod === "cashfree" ? "Cashfree" :
                               order.paymentMethod === "stripe" ? "Stripe" :
                               order.paymentMethod
                             }

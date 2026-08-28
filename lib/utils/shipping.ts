@@ -331,7 +331,7 @@ export async function getAmountNeededForFreeShipping(itemsPrice: number): Promis
 export async function calculateShippingForOrder(
   itemsPrice: number,
   destinationPincode: string,
-  paymentMethod: 'cod' | 'razorpay'
+  paymentMethod: 'cod' | 'razorpay' | 'cashfree'
 ): Promise<number> {
   try {
     // Check for free shipping threshold first

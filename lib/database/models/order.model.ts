@@ -53,7 +53,7 @@ export interface IOrder {
     country: string;
   };
   deliveryAddress?: any;
-  paymentMethod: 'cod' | 'razorpay' | 'other';
+  paymentMethod: 'cod' | 'razorpay' | 'cashfree' | 'other';
   paymentResult?: {
     id?: string;
     status?: string;
@@ -74,6 +74,9 @@ export interface IOrder {
   razorpay_order_id?: string;
   razorpayOrderId?: string;
   razorpay_payment_id?: string;
+  cashfreeOrderId?: string;
+  cashfreePaymentId?: string;
+  cashfreePaymentSessionId?: string;
   paymentIntentId?: string;
   paidAt?: Date;
   deliveredAt?: Date;
@@ -263,7 +266,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['cod', 'razorpay', 'other'],
+      enum: ['cod', 'razorpay', 'cashfree', 'other'],
       required: true,
     },
     paymentResult: {
@@ -323,6 +326,15 @@ const orderSchema = new mongoose.Schema(
       type: String,
     },
     razorpay_payment_id: {
+      type: String,
+    },
+    cashfreeOrderId: {
+      type: String,
+    },
+    cashfreePaymentId: {
+      type: String,
+    },
+    cashfreePaymentSessionId: {
       type: String,
     },
     paymentIntentId: {

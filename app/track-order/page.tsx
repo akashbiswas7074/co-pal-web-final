@@ -348,6 +348,7 @@ const TrackOrderPage = () => {  const router = useRouter();
                     <span className="font-medium">
                       {orderData.paymentMethod === 'cod' ? 'Cash on Delivery' : 
                        orderData.paymentMethod === 'razorpay' ? 'Razorpay' : 
+                       orderData.paymentMethod === 'cashfree' ? 'Cashfree' : 
                        orderData.paymentMethod === 'stripe' ? 'Stripe' : 
                        orderData.paymentMethod || 'N/A'}
                     </span>
