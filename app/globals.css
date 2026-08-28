@@ -691,7 +691,7 @@
   }
 }
 
-/* Hide Eser Pay / eSewa Pay from Checkout Page */
+/* Hide Eser Pay / eSewa Pay / Razorpay from Checkout Page */
 #eser-pay,
 .eser-pay,
 #esewa-pay,
@@ -700,18 +700,25 @@
 .eserpay,
 #eser_pay,
 .eser_pay,
+#razorpay,
+.razorpay,
+#razorpay-pay,
+.razorpay-pay,
 [data-payment="eser"],
 [data-payment="eserpay"],
 [data-payment="esewa"],
+[data-payment="razorpay"],
 [data-payment-method="eser"],
 [data-payment-method="eserpay"],
 [data-payment-method="esewa"],
 [data-payment-method="eser_pay"],
+[data-payment-method="razorpay"],
 label[for="eser"],
 label[for="eserpay"],
 label[for="esewa"],
 label[for="esewapay"],
 label[for="eser_pay"],
+label[for="razorpay"],
 .cf-payment-method-eser,
 .cf-payment-method-esewa,
 div[class*="eser-pay"],
