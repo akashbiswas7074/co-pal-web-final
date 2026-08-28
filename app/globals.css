@@ -690,3 +690,41 @@
     transform: translateX(0);
   }
 }
+
+/* Hide Eser Pay / eSewa Pay from Checkout Page */
+#eser-pay,
+.eser-pay,
+#esewa-pay,
+.esewa-pay,
+#eserpay,
+.eserpay,
+#eser_pay,
+.eser_pay,
+[data-payment="eser"],
+[data-payment="eserpay"],
+[data-payment="esewa"],
+[data-payment-method="eser"],
+[data-payment-method="eserpay"],
+[data-payment-method="esewa"],
+[data-payment-method="eser_pay"],
+label[for="eser"],
+label[for="eserpay"],
+label[for="esewa"],
+label[for="esewapay"],
+label[for="eser_pay"],
+.cf-payment-method-eser,
+.cf-payment-method-esewa,
+div[class*="eser-pay"],
+div[id*="eser-pay"],
+div[class*="esewa-pay"],
+div[id*="esewa-pay"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
