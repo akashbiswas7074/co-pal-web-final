@@ -46,9 +46,14 @@ export async function POST(req: NextRequest) {
     user.resetPasswordExpires = resetPasswordExpires;
     await user.save();
 
+    // Determine app origin from environment or request headers
+    const reqOrigin = req.headers.get('origin') || 
+      (req.headers.get('x-forwarded-proto') && req.headers.get('host') ? `${req.headers.get('x-forwarded-proto')}://${req.headers.get('host')}` : null) ||
+      (req.headers.get('host') ? `http://${req.headers.get('host')}` : null);
+
     // Send password reset email (using the original unhashed token)
     try {
-      await sendPasswordResetEmail(user.email, resetToken);
+      await sendPasswordResetEmail(user.email, resetToken, reqOrigin || undefined);
     } catch (emailError) {
       console.error("Failed to send password reset email:", emailError);
       // If email fails, should we revert the token save? For now, log and return generic error.

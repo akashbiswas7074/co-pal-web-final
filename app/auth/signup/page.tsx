@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { useWebsiteLogo } from '@/hooks/use-website-logo';
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const { logo, isLoading: logoLoading } = useWebsiteLogo();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -26,6 +28,25 @@ export default function SignUpPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/profile');
+    }
+  }, [status, router]);
+
+  if (status === 'authenticated' || status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-gray-900 dark:border-gray-700 dark:border-t-white rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            {status === 'authenticated' ? 'You are already signed in. Redirecting...' : 'Loading...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setter(e.target.value);

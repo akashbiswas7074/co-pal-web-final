@@ -143,20 +143,24 @@ export default function CheckoutComponent() {
       phone: "", // Added phone
     },
     validate: {
-      address1: (value) => // Changed from street
-        value.trim().length < 5 ? "Street address must be at least 5 characters" : null,
+      address1: (value) =>
+        !value || value.trim().length < 5 ? "Street address must be at least 5 characters" : null,
       city: (value) =>
-        value.trim().length < 2 ? "City must be at least 2 letters" : null,
+        !value || value.trim().length < 2 ? "City must be at least 2 letters" : null,
       state: (value) =>
-        value.trim().length < 2 ? "State must be at least 2 letters" : null,
+        !value || value.trim().length < 2 ? "State must be at least 2 letters" : null,
       zipCode: (value) =>
-        /^\d{6}$/.test(value.trim()) ? null : "Zip Code must be 6 digits", // India specific example
+        /^\d{6}$/.test(value ? value.trim() : "") ? null : "Zip Code must be 6 digits",
       firstName: (value) =>
-        value.trim().length < 2 ? "First name must be at least 2 letters" : null,
+        !value || value.trim().length < 2 ? "First name must be at least 2 letters" : null,
       lastName: (value) =>
-        value.trim().length < 2 ? "Last name must be at least 2 letters" : null,
-      phone: (value) =>
-        /^\+?[1-9]\d{1,14}$/.test(value.trim()) ? null : "Invalid phone number", // Basic phone validation
+        !value || value.trim().length < 2 ? "Last name must be at least 2 letters" : null,
+      phone: (value) => {
+        const trimmed = value ? value.trim() : "";
+        if (!trimmed) return "Phone number is required";
+        if (!/^\+?[0-9]{10,15}$/.test(trimmed.replace(/[\s-]/g, ''))) return "Invalid phone number (must be 10-15 digits)";
+        return null;
+      },
     },
   });
 
@@ -616,9 +620,11 @@ export default function CheckoutComponent() {
   })();
 
   const subtotalAfterCoupon = subTotal - (discount > 0 ? (subTotal * (discount / 100)) : 0);
-  const gstAmount = (subtotalAfterCoupon * 0.18);
-  const totalBeforeCoupon = subTotal - totalSaved + shippingCost + taxCost + gstAmount;
-  const finalTotal = totalAfterDiscount !== null ? (totalAfterDiscount + gstAmount) : (totalBeforeCoupon - pointsDiscount);
+  // Apparels GST: 5% included in MRP
+  const baseProductPrice = Math.round((subtotalAfterCoupon / 1.05) * 100) / 100;
+  const includedGstAmount = Math.round((subtotalAfterCoupon - baseProductPrice) * 100) / 100;
+  const totalBeforeCoupon = subTotal - totalSaved + shippingCost + taxCost;
+  const finalTotal = totalAfterDiscount !== null ? totalAfterDiscount : (totalBeforeCoupon - pointsDiscount);
 
   // --- Button State Logic ---
   const isAddressStepValid = step === 1 && !!selectedAddressId;
@@ -1579,7 +1585,7 @@ export default function CheckoutComponent() {
                     {/* Form Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
+                        <Label htmlFor="firstName" className="text-sm font-medium">First Name <span className="text-red-500">*</span></Label>
                         <Input
                           id="firstName"
                           placeholder="Enter your first name"
@@ -1592,7 +1598,7 @@ export default function CheckoutComponent() {
                         {form.errors.firstName && <p className="text-red-500 text-xs mt-1">{form.errors.firstName}</p>}
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
+                        <Label htmlFor="lastName" className="text-sm font-medium">Last Name <span className="text-red-500">*</span></Label>
                         <Input
                           id="lastName"
                           placeholder="Enter your last name"
@@ -1607,7 +1613,7 @@ export default function CheckoutComponent() {
                     </div>
 
                     <div className="space-y-1">
-                      <Label htmlFor="address1" className="text-sm font-medium">Address Line 1</Label>
+                      <Label htmlFor="address1" className="text-sm font-medium">Address Line 1 <span className="text-red-500">*</span></Label>
                       <Input
                         id="address1"
                         placeholder="House No, Building, Street, Area"
@@ -1633,7 +1639,7 @@ export default function CheckoutComponent() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
+                        <Label htmlFor="phone" className="text-sm font-medium">Phone Number <span className="text-red-500">*</span></Label>
                         <Input
                           id="phone"
                           placeholder="Your contact number"
@@ -1647,7 +1653,7 @@ export default function CheckoutComponent() {
                         {form.errors.phone && <p className="text-red-500 text-xs mt-1">{form.errors.phone}</p>}
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="zipCode" className="text-sm font-medium">Zip Code</Label>
+                        <Label htmlFor="zipCode" className="text-sm font-medium">Zip Code <span className="text-red-500">*</span></Label>
                         <Input
                           id="zipCode"
                           placeholder="6-digit Zip/Postal Code"
@@ -1663,7 +1669,7 @@ export default function CheckoutComponent() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <Label htmlFor="city" className="text-sm font-medium">City</Label>
+                        <Label htmlFor="city" className="text-sm font-medium">City <span className="text-red-500">*</span></Label>
                         <Input
                           id="city"
                           placeholder="Your city"
@@ -1676,7 +1682,7 @@ export default function CheckoutComponent() {
                         {form.errors.city && <p className="text-red-500 text-xs mt-1">{form.errors.city}</p>}
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="state" className="text-sm font-medium">State</Label>
+                        <Label htmlFor="state" className="text-sm font-medium">State <span className="text-red-500">*</span></Label>
                         <Input
                           id="state"
                           placeholder="Your state"
@@ -1721,7 +1727,7 @@ export default function CheckoutComponent() {
                       )}
                       <Button
                         type="submit"
-                        disabled={addAddressLoading || !form.isValid()}
+                        disabled={addAddressLoading}
                         className="bg-gray-900 hover:bg-gray-800 transition-colors text-white"
                       >
                         {addAddressLoading ? <Loader className="animate-spin mr-2 h-4 w-4" /> : null}
@@ -1999,13 +2005,11 @@ export default function CheckoutComponent() {
                   <span>- ₹ {pointsDiscount.toFixed(2)}</span>
                 </div>
               )}
-              {gstAmount > 0 && (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">GST (18%):</span>
-                    <span>₹ {gstAmount.toFixed(2)}</span>
-                  </div>
-                </>
+              {includedGstAmount > 0 && (
+                <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-dashed">
+                  <span>Included GST (5%):</span>
+                  <span>₹ {includedGstAmount.toFixed(2)}</span>
+                </div>
               )}
 
               {/* Coupon Discount Display */}

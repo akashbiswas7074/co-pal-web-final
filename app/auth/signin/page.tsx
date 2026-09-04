@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ function SignInFormContent() {
   const initialEmail = searchParams?.get('email') || '';
   const initialTab = searchParams?.get('tab') || 'email';
   const { logo, isLoading: logoLoading } = useWebsiteLogo();
+  const { data: session, status } = useSession();
 
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
@@ -32,6 +33,13 @@ function SignInFormContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(error ? getErrorMessage(error) : null);
   const [successMessage, setSuccessMessage] = useState<string | null>(verified ? 'Email verified successfully! Please sign in.' : null);
+
+  // If already authenticated, redirect away from signin page
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace(callbackUrl);
+    }
+  }, [status, callbackUrl, router]);
 
   // Check for Google trigger parameter and redirect if present
   useEffect(() => {
@@ -106,9 +114,7 @@ function SignInFormContent() {
       toast.info('Redirecting to Google sign-in...');
       await signIn('google', {
         callbackUrl,
-        redirect: false
       });
-      // Note: The actual redirect will be handled by NextAuth
     } catch (error) {
       console.error("Google sign-in error:", error);
       setFormError('Failed to initiate Google sign-in. Please try again.');
@@ -116,6 +122,19 @@ function SignInFormContent() {
       setIsLoading(false);
     }
   };
+
+  if (status === 'authenticated' || status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-gray-900 dark:border-gray-700 dark:border-t-white rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            {status === 'authenticated' ? 'You are already signed in. Redirecting...' : 'Loading...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col lg:flex-row w-full min-h-[calc(100vh-64px)] relative z-10">

@@ -131,29 +131,43 @@ async function getGSPSession() {
 
 /**
  * Calculate GST breakdown (CGST, SGST, IGST) based on location
+ * Apparels GST: 5% INCLUDED in MRP (Final price X)
+ * Product Price = X / 1.05 (round off)
+ * GST = X - X / 1.05
+ * Outside state: IGST = GST
+ * Same state: CGST = GST / 2, SGST = GST / 2
  */
-export function calculateGSTBreakdown(amount: number, destStateCode: string) {
-    const originStateCode = process.env.GST_STATE_CD || '27'; // Default to Maharashtra if not set
-    const gstRate = 0.18; // Default 18%
+export function calculateGSTBreakdown(amount: number, destStateCodeOrName: string = '') {
+    const originState = process.env.BUSINESS_STATE || process.env.GST_STATE_CD || '19'; // 19 = West Bengal
+    const gstRate = 0.05; // 5% for apparels (MRP inclusive)
     
-    const taxTotal = amount * gstRate;
+    // Base Product Price = X / 1.05 (round off to 2 decimals)
+    const basePrice = Math.round((amount / (1 + gstRate)) * 100) / 100;
+    const totalTax = Math.round((amount - basePrice) * 100) / 100;
     
-    // Intra-state (Same state): CGST + SGST
-    if (destStateCode === originStateCode) {
+    const normalizedDest = (destStateCodeOrName || '').toLowerCase().trim();
+    const isSameState = normalizedDest.includes('west bengal') || 
+                        normalizedDest.includes('wb') || 
+                        normalizedDest === '19' || 
+                        normalizedDest === originState.toLowerCase();
+
+    if (isSameState) {
+        const cgst = Math.round((totalTax / 2) * 100) / 100;
+        const sgst = Math.round((totalTax - cgst) * 100) / 100; // ensures cgst + sgst === totalTax
         return {
-            cgst: taxTotal / 2,
-            sgst: taxTotal / 2,
+            basePrice,
+            cgst,
+            sgst,
             igst: 0,
-            totalTax: taxTotal
+            totalTax
         };
-    } 
-    // Inter-state (Different state): IGST
-    else {
+    } else {
         return {
+            basePrice,
             cgst: 0,
             sgst: 0,
-            igst: taxTotal,
-            totalTax: taxTotal
+            igst: totalTax,
+            totalTax
         };
     }
 }

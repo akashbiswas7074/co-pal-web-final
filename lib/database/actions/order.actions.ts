@@ -85,15 +85,14 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
       gstInfo,
     } = data;
 
-    // Define business origin (should ideally come from env or settings)
-    const BUSINESS_STATE = process.env.BUSINESS_STATE || 'Maharashtra';
-    const GST_RATE = 0.18; // Default 18% GST
+    // Define business origin state
+    const BUSINESS_STATE = process.env.BUSINESS_STATE || 'West Bengal';
+    const GST_RATE = 0.05; // 5% GST included in MRP
 
     // Calculate taxes if GST Info is present
     let cgst = 0;
     let sgst = 0;
     let igst = 0;
-    let calculatedTaxPrice = 0;
 
     // If gstInfo is provided, verify it first
     let verifiedGstInfo = gstInfo;
@@ -109,23 +108,19 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
         console.log(`[processCheckoutSteps] GSTIN Verified for: ${verifiedGstInfo.businessName}`);
       } else {
         console.warn(`[processCheckoutSteps] GSTIN Verification failed: ${verificationResponse.message}`);
-        // Optionally fail checkout if the GSTIN is explicitly invalid
-        // return { success: false, message: `Invalid GSTIN: ${verificationResponse.message}` };
       }
     }
 
-    // Use automated tax breakdown logic for consistency
-    const stateCode = shippingAddress.state?.substring(0, 2) || (process.env.GST_STATE_CD || '27');
-    const taxBreakdown = calculateGSTBreakdown(itemsPrice, stateCode);
+    // Use automated tax breakdown logic (5% MRP inclusive)
+    const destState = shippingAddress.state || '';
+    const taxBreakdown = calculateGSTBreakdown(itemsPrice, destState);
     
-    // Override taxes with calculated values if taxPrice is provided (or if we want to automate it)
-    const finalTaxPrice = taxPrice > 0 ? taxPrice : taxBreakdown.totalTax;
+    const finalTaxPrice = taxBreakdown.totalTax;
     cgst = taxBreakdown.cgst;
     sgst = taxBreakdown.sgst;
     igst = taxBreakdown.igst;
 
-    // Use provided shipping price if available (as frontend has more accurate weight calculation)
-    // Otherwise calculate dynamically
+    // Use provided shipping price if available
     let finalShippingPrice = shippingPrice;
 
     if (finalShippingPrice === undefined || finalShippingPrice < 0) {
@@ -136,13 +131,10 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
       );
     }
 
+    // Recalculate total price: MRP (itemsPrice) already INCLUDES 5% GST
+    const finalTotalPrice = itemsPrice + finalShippingPrice - discountAmount;
 
-
-    // Recalculate total price ensuring consistency
-    // We trust the individual components from the frontend which has the full context
-    const finalTotalPrice = itemsPrice + finalShippingPrice + finalTaxPrice - discountAmount;
-
-    console.log(`[processCheckoutSteps] Finalizing One-Time: itemsPrice=₹${itemsPrice}, finalShipping=₹${finalShippingPrice}, finalTax=₹${finalTaxPrice}, discount=₹${discountAmount}, finalTotal=₹${finalTotalPrice}`);
+    console.log(`[processCheckoutSteps] Finalizing One-Time: itemsPrice=₹${itemsPrice}, finalShipping=₹${finalShippingPrice}, includedTax=₹${finalTaxPrice}, discount=₹${discountAmount}, finalTotal=₹${finalTotalPrice}`);
 
     // 1. Validate User (within transaction)
     const user = await User.findById(userId).session(session);
@@ -682,7 +674,8 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
             customer_phone: formattedPhone
           },
           order_meta: {
-            return_url: `${appUrl}/order/${savedOrder._id.toString()}?order_id={order_id}`
+            return_url: `${appUrl}/order/${savedOrder._id.toString()}?order_id={order_id}`,
+            payment_methods: "cc,dc,upi,nb,app,paylater"
           }
         };
 

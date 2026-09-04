@@ -99,8 +99,8 @@ async function sendEmail(options: EmailOptions) {
   }
 }
 
-export async function sendPasswordResetEmail(to: string, token: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+export async function sendPasswordResetEmail(to: string, token: string, customAppUrl?: string) {
+  const appUrl = customAppUrl || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || process.env.APP_URL || 'http://localhost:3000';
   const resetLink = `${appUrl}/auth/reset-password?token=${token}`;
   const companyName = getCompanyName();
   const subject = `Reset Your ${companyName} Password`;
@@ -119,8 +119,8 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   await sendEmail({ to, subject, html });
 }
 
-export async function sendVerificationEmail(to: string, token: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+export async function sendVerificationEmail(to: string, token: string, customAppUrl?: string) {
+  const appUrl = customAppUrl || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || process.env.APP_URL || 'http://localhost:3000';
   const verificationLink = `${appUrl}/auth/verify-email?token=${token}`;
   const companyName = getCompanyName();
   const subject = `Verify Your ${companyName} Email Address`;

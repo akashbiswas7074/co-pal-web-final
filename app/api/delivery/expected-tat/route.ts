@@ -82,8 +82,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          expected_tat: "Same day delivery",
-          expected_delivery_date: new Date().toISOString().split('T')[0],
+          expected_tat: "1-2 business days",
+          expected_delivery_date: calculateDeliveryDate(getDefaultPickupDateForDelhivery(), 2), // 3 handling days + 2 local transit days
           pickup_date: getDefaultPickupDate(),
           fallback: true,
           error: "Same origin and destination pin codes"
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           expected_tat: "3-7 business days",
-          expected_delivery_date: calculateFallbackDate(5),
+          expected_delivery_date: calculateFallbackDate(8), // 3 days handling + 5 days shipping
           pickup_date: getDefaultPickupDate(),
           fallback: true,
           error: "API token not configured"
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       pdt
     });
 
-    // Set expected_pickup_date - format for Delhivery API as 'expected_pd'
+    // Set expected_pickup_date - format for Delhivery API as 'expected_pd' (Today + 3 handling days)
     const pickupDateFormatted = expected_pickup_date 
       ? formatPickupDateForDelhivery(expected_pickup_date)
       : getDefaultPickupDateForDelhivery();
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           expected_tat: "3-7 business days",
-          expected_delivery_date: calculateFallbackDate(5),
+          expected_delivery_date: calculateFallbackDate(8), // 3 days handling + 5 days shipping
           pickup_date: expected_pickup_date || getDefaultPickupDate(),
           fallback: true,
           error: `Delhivery API error: ${response.status} - ${errorText}`
@@ -205,7 +205,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           expected_tat: "3-7 business days",
-          expected_delivery_date: calculateFallbackDate(5),
+          expected_delivery_date: calculateFallbackDate(8), // 3 days handling + 5 days shipping
           pickup_date: expected_pickup_date || getDefaultPickupDate(),
           fallback: true,
           error: "Failed to parse API response"
@@ -219,14 +219,11 @@ export async function GET(request: NextRequest) {
     if (data.success !== false && data.data) {
       const tatData = data.data;
       
-      // Calculate expected delivery date if not provided by Delhivery
-      let calculatedDeliveryDate = tatData.expected_delivery_date || tatData.delivery_date;
+      // Extract transit TAT days to destination address
+      const tatDays = extractTatDays(tatData.expected_tat || tatData.tat || 3);
       
-      if (!calculatedDeliveryDate) {
-        // Extract TAT days and calculate delivery date
-        const tatDays = extractTatDays(tatData.expected_tat || tatData.tat);
-        calculatedDeliveryDate = calculateDeliveryDate(pickupDateFormatted, tatDays);
-      }
+      // Delivery Date = Pickup Date (Today + 3 handling days) + Transit Days to destination address
+      const calculatedDeliveryDate = calculateDeliveryDate(pickupDateFormatted, tatDays);
       
       return NextResponse.json({
         success: true,
@@ -247,7 +244,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           expected_tat: "3-7 business days",
-          expected_delivery_date: calculateFallbackDate(5),
+          expected_delivery_date: calculateFallbackDate(8), // 3 days handling + 5 days transit
           pickup_date: expected_pickup_date || getDefaultPickupDate(),
           fallback: true,
           error: errorMsg
@@ -263,7 +260,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         expected_tat: "3-7 business days",
-        expected_delivery_date: calculateFallbackDate(5),
+        expected_delivery_date: calculateFallbackDate(8), // 3 days handling + 5 days transit
         pickup_date: getDefaultPickupDate(),
         fallback: true,
         error: `Unexpected error: ${error.message}`
@@ -273,12 +270,12 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Helper function to get default pickup date (1 day from now)
+ * Helper function to get default pickup date (3 days handling/packing time from now)
  */
 function getDefaultPickupDate(): string {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
+  const pickup = new Date();
+  pickup.setDate(pickup.getDate() + 3);
+  return pickup.toISOString().split('T')[0];
 }
 
 /**
@@ -297,7 +294,7 @@ function formatPickupDateForDelhivery(dateString: string): string {
     today.setHours(0, 0, 0, 0);
     
     if (date < today) {
-      console.log('[Expected TAT API] Pickup date is in the past, using tomorrow');
+      console.log('[Expected TAT API] Pickup date is in the past, using default (today + 3 days)');
       return getDefaultPickupDateForDelhivery();
     }
     
@@ -314,21 +311,21 @@ function formatPickupDateForDelhivery(dateString: string): string {
 }
 
 /**
- * Helper function to get default pickup date for Delhivery (1 day from now with time)
+ * Helper function to get default pickup date for Delhivery (3 days handling time with time)
  */
 function getDefaultPickupDateForDelhivery(): string {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const pickup = new Date();
+  pickup.setDate(pickup.getDate() + 3);
   
-  const year = tomorrow.getFullYear();
-  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const day = String(tomorrow.getDate()).padStart(2, '0');
+  const year = pickup.getFullYear();
+  const month = String(pickup.getMonth() + 1).padStart(2, '0');
+  const day = String(pickup.getDate()).padStart(2, '0');
   
   return `${year}-${month}-${day} 10:00`;
 }
 
 /**
- * Helper function to calculate fallback date
+ * Helper function to calculate fallback date (including handling time)
  */
 function calculateFallbackDate(days: number): string {
   const date = new Date();

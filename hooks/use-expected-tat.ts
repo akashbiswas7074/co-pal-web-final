@@ -24,11 +24,11 @@ interface UseExpectedTatParams {
   enabled?: boolean; // Whether to auto-fetch
 }
 
-// Helper function to get default pickup date (1 day from now)
+// Helper function to get default pickup date (3 days handling/packing time from now)
 const getDefaultPickupDate = (): string => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
+  const pickupDate = new Date();
+  pickupDate.setDate(pickupDate.getDate() + 3);
+  return pickupDate.toISOString().split('T')[0];
 };
 
 export const useExpectedTat = ({
@@ -117,7 +117,7 @@ export const useExpectedTat = ({
       // Always set fallback data on error to ensure UI still works
       setData({
         expected_tat: "3-7 business days",
-        expected_delivery_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        expected_delivery_date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         pickup_date: expected_pickup_date || getDefaultPickupDate(),
         fallback: true
       });
