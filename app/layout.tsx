@@ -17,14 +17,27 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // Prevents zooming out which can show the white gap
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#ffffff',
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  return await generateDynamicMetadata({
-    // No specific page title - will use the default from admin settings
+  const dynamicMeta = await generateDynamicMetadata({
     type: 'website'
   });
+
+  return {
+    ...dynamicMeta,
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: 'Peeds',
+    },
+    formatDetection: {
+      telephone: false,
+    },
+  };
 }
 
 export default function RootLayout({
@@ -33,8 +46,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="overflow-x-hidden" suppressHydrationWarning>
-      <body className={`${montserrat.className} overflow-x-hidden w-full max-w-[100vw] min-h-screen`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${montserrat.className} w-full min-h-screen`} suppressHydrationWarning>
         <ClientProviders>
           <DynamicThemeProvider>
             <Layout>

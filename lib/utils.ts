@@ -430,4 +430,26 @@ export function formatPrice(price: number): string {
   }).format(price);
 }
 
-// Other utility functions can be added below...
+/**
+ * Safely parses date inputs across all browser JS engines, including iOS Safari (JavaScriptCore).
+ * Converts space-separated dates (e.g. "2025-07-05 10:00:00") into standard ISO format before constructing Date.
+ */
+export function parseDateSafely(dateInput: any): Date | null {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) {
+    return isNaN(dateInput.getTime()) ? null : dateInput;
+  }
+  
+  try {
+    let str = String(dateInput).trim();
+    // Replace space between date and time with 'T' for iOS WebKit strict ISO compliance
+    if (str.includes(' ') && !str.includes('T')) {
+      str = str.replace(' ', 'T');
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  } catch (err) {
+    return null;
+  }
+}
+

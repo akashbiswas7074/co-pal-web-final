@@ -332,7 +332,7 @@
   contain: layout style;
 }
 
-/* Mobile-specific optimizations */
+/* Mobile-specific & iOS Safari optimizations */
 @media (max-width: 768px) {
   .mobile-optimized {
     contain: layout style paint;
@@ -342,7 +342,51 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* Prevent iOS Safari auto-zoom when focusing inputs */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="search"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
+
+/* iOS WebKit smoothness, touch delegation & tap highlight cleanup */
+html,
+body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Force pointer cursor on all interactive elements so iOS Safari delegates touch events properly */
+[onClick],
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+[tabindex],
+.cursor-pointer {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
 
 @layer base {
   :root {
@@ -666,8 +710,10 @@
   width: 85%;
   max-width: 350px;
   height: 100vh;
+  height: 100dvh;
   background: white;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   position: fixed;
   top: 0;
   left: 0;

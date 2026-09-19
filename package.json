@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev -H 0.0.0.0",
+    "dev:host": "next dev -H 0.0.0.0",
+    "dev:turbo": "next dev -H 0.0.0.0 --turbopack",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint"

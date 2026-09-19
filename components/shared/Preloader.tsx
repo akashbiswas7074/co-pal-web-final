@@ -11,33 +11,28 @@ const Preloader: React.FC = () => {
   const { settings, isLoading: logoLoading } = usePreloaderSettings();
 
   useEffect(() => {
-    if (logoLoading) return; // Don't start timer until logo is loaded
-
-    // Synchronize scroll on mount
-    if (typeof window !== "undefined") {
-      window.scrollTo(0, 0);
-      document.body.style.overflow = "hidden";
-    }
-
-    // Hide preloader after a fixed duration to allow path animation to finish
+    // Allow full 3.2s animation to finish completely (logo path drawing takes 3s)
     const timer = setTimeout(() => {
       setLoading(false);
       if (typeof document !== "undefined") {
-        document.body.style.overflow = "unset";
+        document.body.style.overflow = "";
       }
-    }, 3000); 
+    }, 3200); 
 
     return () => {
       clearTimeout(timer);
       if (typeof document !== "undefined") {
-        document.body.style.overflow = "unset";
+        document.body.style.overflow = "";
       }
     };
   }, [logoLoading]);
 
+  // If loading is done, unmount immediately so it cannot block touch events
+  if (!loading) return null;
+
   // Prevent flashing before logo settings are evaluated
   if (logoLoading) return (
-     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black" />
+     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black pointer-events-none" />
   );
 
   // If the preloader setting is inactive or there's no custom URL, fallback to default geometric paths
@@ -45,13 +40,15 @@ const Preloader: React.FC = () => {
   const isSvg = logoUrl && (logoUrl.endsWith('.svg') || logoUrl.includes('format=svg'));
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={() => {
+      if (typeof document !== "undefined") document.body.style.overflow = "";
+    }}>
       {loading && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1, ease: "easeInOut" }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
+          exit={{ opacity: 0, pointerEvents: "none" }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black pointer-events-auto"
         >
           <motion.div
             initial={{ opacity: 0 }}
@@ -77,13 +74,13 @@ const Preloader: React.FC = () => {
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: "240px" }}
-            transition={{ duration: 2.5, ease: "easeInOut" }}
+            transition={{ duration: 3.0, ease: "easeInOut" }}
             className="absolute bottom-24 h-[1px] bg-white/20 overflow-hidden"
           >
             <motion.div 
                initial={{ x: "-100%" }}
                animate={{ x: "0%" }}
-               transition={{ duration: 2.5, ease: "easeInOut" }}
+               transition={{ duration: 3.0, ease: "easeInOut" }}
                className="w-full h-full bg-white"
             />
           </motion.div>
