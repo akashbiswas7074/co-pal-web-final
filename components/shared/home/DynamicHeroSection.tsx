@@ -36,7 +36,7 @@ interface DynamicHeroSectionProps {
 }
 
 // Fixed intersection observer hook with proper typing
-const useIntersectionObserver = (options: IntersectionObserverInit = {}) => {
+const useIntersectionObserver = ({ threshold = 0.1, rootMargin = '50px' }: IntersectionObserverInit = {}) => {
   const ref = useRef<HTMLElement>(null);
   const [isIntersecting, setIsIntersecting] = useState(false);
   const [hasIntersected, setHasIntersected] = useState(false);
@@ -52,12 +52,11 @@ const useIntersectionObserver = (options: IntersectionObserverInit = {}) => {
           setHasIntersected(true);
         }
       },
-      { threshold: 0.1, rootMargin: '50px', ...options }
+      { threshold, rootMargin }
     );
 
     observer.observe(element);
-    return () => observer.disconnect();
-  }, [hasIntersected, options]);
+  }, [threshold, rootMargin]);
 
   return { ref, isIntersecting, hasIntersected };
 };

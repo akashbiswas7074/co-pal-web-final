@@ -404,6 +404,20 @@ summary,
 
 .scroll-touch {
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* GPU Hardware Acceleration utility */
+.gpu-accelerated {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Performance optimizations for fast mobile rendering */
+img {
+  content-visibility: auto;
 }
 
 

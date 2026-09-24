@@ -42,13 +42,19 @@ const NavbarInput = ({ responsive, openSearchModal = false }: {
   useEffect(() => {
     // Only apply fixed positioning for desktop view (non-responsive mode)
     if (!responsive) {
+      let ticking = false;
       const handleScroll = () => {
-        // After scrolling 200px, make the search bar fixed
-        const shouldBeFixed = window.scrollY > 200;
-        setIsFixed(shouldBeFixed);
+        if (!ticking) {
+          window.requestAnimationFrame(() => {
+            const shouldBeFixed = window.scrollY > 200;
+            setIsFixed(prev => (prev !== shouldBeFixed ? shouldBeFixed : prev));
+            ticking = false;
+          });
+          ticking = true;
+        }
       };
       
-      window.addEventListener('scroll', handleScroll);
+      window.addEventListener('scroll', handleScroll, { passive: true });
       return () => window.removeEventListener('scroll', handleScroll);
     }
   }, [responsive]);

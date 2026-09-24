@@ -31,21 +31,28 @@ export default function ThumbnailScroller({ children, className = '' }: Thumbnai
     if (!container) return;
 
     // Function to update scroll indicators
+    let ticking = false;
     const updateScrollIndicators = () => {
-      if (!isMobile) {
-        setShowLeftIndicator(false);
-        setShowRightIndicator(false);
-        return;
-      }
-      
-      // On mobile, check if scrollable and direction
-      const isScrollable = container.scrollWidth > container.clientWidth;
-      const isScrolledToStart = container.scrollLeft <= 5;
-      const isScrolledToEnd = 
-        container.scrollLeft + container.clientWidth >= container.scrollWidth - 5;
-      
-      setShowRightIndicator(isScrollable && !isScrolledToEnd);
-      setShowLeftIndicator(isScrollable && !isScrolledToStart);
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        if (!container) return;
+        if (!isMobile) {
+          setShowLeftIndicator(false);
+          setShowRightIndicator(false);
+          return;
+        }
+        
+        // On mobile, check if scrollable and direction
+        const isScrollable = container.scrollWidth > container.clientWidth;
+        const isScrolledToStart = container.scrollLeft <= 5;
+        const isScrolledToEnd = 
+          container.scrollLeft + container.clientWidth >= container.scrollWidth - 5;
+        
+        setShowRightIndicator(isScrollable && !isScrolledToEnd);
+        setShowLeftIndicator(isScrollable && !isScrolledToStart);
+      });
     };
 
     // Initial check after all images load
@@ -87,9 +94,9 @@ export default function ThumbnailScroller({ children, className = '' }: Thumbnai
     setTimeout(checkAllImagesLoaded, 50);
     setTimeout(updateScrollIndicators, 500); // Backup check
 
-    // Add event listeners
-    container.addEventListener('scroll', updateScrollIndicators);
-    window.addEventListener('resize', updateScrollIndicators);
+    // Add event listeners with passive option for 60fps scrolling
+    container.addEventListener('scroll', updateScrollIndicators, { passive: true });
+    window.addEventListener('resize', updateScrollIndicators, { passive: true });
 
     // Find selected button and scroll to it
     const scrollSelectedIntoView = () => {

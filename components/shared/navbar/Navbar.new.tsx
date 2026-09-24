@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
@@ -170,29 +170,43 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  useEffect(() => {
-    const controlNavbar = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+  const lastScrollYRef = useRef(0);
+  const isMobileMenuOpenRef = useRef(isMobileMenuOpen);
+  isMobileMenuOpenRef.current = isMobileMenuOpen;
 
-      if (window.scrollY > 200) {
-        if (window.scrollY > lastScrollY && !isMobileMenuOpen) {
-          setShow("-translate-y-full");
-        } else {
-          setShow("shadow-lg");
-        }
-      } else {
-        setShow("translate-y-0");
+  useEffect(() => {
+    let ticking = false;
+
+    const controlNavbar = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          
+          setIsScrolled(prev => {
+            const next = currentScrollY > 50;
+            return prev !== next ? next : prev;
+          });
+
+          if (currentScrollY > 200) {
+            if (currentScrollY > lastScrollYRef.current && !isMobileMenuOpenRef.current) {
+              setShow(prev => prev !== "-translate-y-full" ? "-translate-y-full" : prev);
+            } else {
+              setShow(prev => prev !== "shadow-lg" ? "shadow-lg" : prev);
+            }
+          } else {
+            setShow(prev => prev !== "translate-y-0" ? "translate-y-0" : prev);
+          }
+
+          lastScrollYRef.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
       }
-      setLastScrollY(window.scrollY);
     };
 
-    window.addEventListener('scroll', controlNavbar);
+    window.addEventListener('scroll', controlNavbar, { passive: true });
     return () => window.removeEventListener('scroll', controlNavbar);
-  }, [lastScrollY, isMobileMenuOpen]);
+  }, []);
 
   // Effect to handle body scroll lock when mobile menu, cart drawer, or search modal is open
   useEffect(() => {

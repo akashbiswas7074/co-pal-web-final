@@ -42,7 +42,7 @@ const Preloader: React.FC = () => {
         if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
       } catch (e) {}
       if (typeof document !== "undefined") document.body.style.overflow = "";
-    }, 1200); 
+    }, 600); 
 
     return () => {
       clearTimeout(timer);
