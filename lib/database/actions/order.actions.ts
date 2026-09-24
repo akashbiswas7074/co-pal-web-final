@@ -216,16 +216,12 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
         console.log(`[processCheckoutSteps] Size is undefined for Product ID: ${productId}`);
         if (productData && productData.subProducts && productData.subProducts.length > 0) {
           const subProduct = productData.subProducts[0];
-          if (subProduct && subProduct.sizes && subProduct.sizes.length > 0) {
-            item.size = subProduct.sizes[0].size;
+          const validSizes = (subProduct && subProduct.sizes) ? subProduct.sizes.filter((s: any) => s.size && s.size.trim() !== '') : [];
+          if (validSizes.length > 0) {
+            const inStockSize = validSizes.find((s: any) => s.qty > 0) || validSizes[0];
+            item.size = inStockSize.size;
             console.log(`[processCheckoutSteps] Automatically set size for ${item.name} to: ${item.size}`);
-          } else {
-            await session.abortTransaction();
-            return { success: false, message: `No sizes available for product: ${item.name || productId}.`, productId, size: item.size };
           }
-        } else {
-          await session.abortTransaction();
-          return { success: false, message: `Product details not found for product: ${item.name || productId}.`, productId, size: item.size };
         }
       }
 
@@ -237,9 +233,19 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
 
       if (productDetails && productDetails.subProducts && productDetails.subProducts.length > 0) {
         const subProduct = productDetails.subProducts[0];
-        if (subProduct && subProduct.sizes) {
-          const sizeInfo = subProduct.sizes.find((s: any) => s.size === item.size);
-          if (sizeInfo) { availableStock = sizeInfo.qty; sizeFound = true; }
+        if (subProduct && subProduct.sizes && subProduct.sizes.length > 0) {
+          const sizeInfo = subProduct.sizes.find((s: any) => 
+            item.size ? String(s.size).trim().toLowerCase() === String(item.size).trim().toLowerCase() : false
+          );
+          if (sizeInfo) { 
+            availableStock = sizeInfo.qty; 
+            sizeFound = true; 
+          }
+        }
+        // Fallback for products without sizes
+        if (!sizeFound && (!item.size || item.size === 'default')) {
+          availableStock = subProduct.qty || subProduct.stock || productDetails.qty || productDetails.stock || 0;
+          sizeFound = true;
         }
       }
 
@@ -273,7 +279,9 @@ export async function processCheckoutSteps(data: CheckoutData): Promise<any> {
 
           // If product has sizes, get original price from matching size
           if (subProduct.sizes && Array.isArray(subProduct.sizes) && item.size) {
-            const matchingSize = subProduct.sizes.find((s: any) => s.size === item.size);
+            const matchingSize = subProduct.sizes.find((s: any) => 
+              String(s.size).trim().toLowerCase() === String(item.size).trim().toLowerCase()
+            );
             if (matchingSize) {
               originalItemPrice = matchingSize.originalPrice || matchingSize.price || 0;
             }

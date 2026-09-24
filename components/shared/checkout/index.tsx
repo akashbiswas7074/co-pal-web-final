@@ -778,7 +778,10 @@ export default function CheckoutComponent() {
           price: item.price,
           originalPrice: originalPrice,
           isSample: isSample,
-          sample: item.sample
+          sample: item.sample,
+          size: item.size || undefined,
+          color: item.color || undefined,
+          style: item.style || undefined
         };
       }),
       itemsPrice: itemTotal,
