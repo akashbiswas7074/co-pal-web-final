@@ -370,8 +370,6 @@ body {
 
 /* iOS Safari & WebKit Touch Delegation:
    Ensures buttons, links, inputs, and interactive elements register instant taps without delay or dropped clicks */
-html,
-body,
 button,
 a,
 input,

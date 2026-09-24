@@ -2,8 +2,30 @@
 
 import { lazy, Suspense } from "react";
 import { Facebook, Instagram, Youtube, AtSign, Twitter, Linkedin } from "lucide-react";
-import { FaCcVisa, FaCcMastercard, FaCcAmex } from "react-icons/fa";
 import { Input } from "@/components/ui/input";
+
+const VisaIcon = ({ color }: { color?: string }) => (
+  <svg width="38" height="26" viewBox="0 0 48 32" fill="none" className="opacity-80" style={{ color }}>
+    <rect width="48" height="32" rx="4" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M19.5 21L21.5 11H24L22 21H19.5ZM16.2 11L14.1 18.2L13.8 16.8C13.4 15.4 12.1 13.9 10.7 13.2L13 21H15.6L19.4 11H16.2ZM30.7 14.5C30.7 13.1 28.8 13 27.2 13C25.2 13 24.1 13.5 24.1 13.5L24.5 15.3C24.5 15.3 25.5 14.9 26.9 14.9C27.9 14.9 28.4 15.4 28.4 16C28.4 16.5 28 16.9 27 17.4C25.5 18.1 24.4 18.9 24.4 20.3C24.4 22.2 26.2 23 28.1 23C29.7 23 30.7 22.5 30.7 22.5L30.3 20.6C30.3 20.6 29.3 21 28.1 21C27.3 21 26.7 20.6 26.7 20C26.7 19.3 27.4 18.9 28.3 18.4C29.8 17.6 30.7 16.5 30.7 14.5ZM35.8 21H38L36.2 11H34.3C33.7 11 33.2 11.4 33 11.9L29.7 21H32.2L32.7 19.5H35.4L35.8 21ZM33.3 17.8L34.5 14.2L35.1 17.8H33.3Z" fill="currentColor"/>
+  </svg>
+);
+
+const MastercardIcon = ({ color }: { color?: string }) => (
+  <svg width="38" height="26" viewBox="0 0 48 32" fill="none" className="opacity-80" style={{ color }}>
+    <rect width="48" height="32" rx="4" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5" />
+    <circle cx="19" cy="16" r="7" fill="currentColor" fillOpacity="0.4" />
+    <circle cx="29" cy="16" r="7" fill="currentColor" fillOpacity="0.3" />
+    <path d="M24 10.8C25.6 12.1 26.6 13.9 26.6 16C26.6 18.1 25.6 19.9 24 21.2C22.4 19.9 21.4 18.1 21.4 16C21.4 13.9 22.4 12.1 24 10.8Z" fill="currentColor" fillOpacity="0.7" />
+  </svg>
+);
+
+const AmexIcon = ({ color }: { color?: string }) => (
+  <svg width="38" height="26" viewBox="0 0 48 32" fill="none" className="opacity-80" style={{ color }}>
+    <rect width="48" height="32" rx="4" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5" />
+    <text x="24" y="19" textAnchor="middle" fill="currentColor" fontSize="8" fontWeight="bold" fontFamily="sans-serif" letterSpacing="0.5">AMEX</text>
+  </svg>
+);
 import { Button } from "@/components/ui/button";
 import { useWebsiteLogo } from "@/hooks/use-website-logo";
 import { useSiteConfig } from "@/hooks/use-site-config";
@@ -338,16 +360,29 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
       break;
     case 'policy':
       links = footer?.policyLinks || [
-        { title: "Privacy Policy", url: "/privacy-policy" },
-        { title: "Cookie Policy", url: "/cookie-policy" },
-        { title: "Returns & Cancellations", url: "/returns-and-cancellations" },
-        { title: "Shipping & Delivery", url: "/shipping-and-delivery" },
-        { title: "Terms & Conditions", url: "/terms-and-conditions" }
+        { title: "Privacy Policy", url: "/return-policy" },
+        { title: "Cookie Policy", url: "/return-policy" },
+        { title: "Returns & Cancellations", url: "/return-policy" },
+        { title: "Shipping & Delivery", url: "/track-order" },
+        { title: "Terms & Conditions", url: "/return-policy" }
       ];
       break;
     default:
       links = [];
   }
+
+  // Normalize URLs to prevent 404 RSC prefetch loops
+  const normalizeUrl = (rawUrl: string) => {
+    if (!rawUrl || rawUrl === '#' || rawUrl.startsWith('#')) return '#';
+    if (rawUrl === '/returns-and-cancellations' || rawUrl === '/terms-and-conditions' || rawUrl === '/privacy-policy' || rawUrl === '/cookie-policy' || rawUrl === '/privacy' || rawUrl === '/terms') {
+      return '/return-policy';
+    }
+    if (rawUrl === '/faqs') return '/faq';
+    if (rawUrl === '/shipping' || rawUrl === '/shipping-and-delivery') return '/track-order';
+    if (rawUrl === '/shop/new-arrivals') return '/shop';
+    if (rawUrl === '/about') return '/contact';
+    return rawUrl;
+  };
 
   return (
     <div>
@@ -356,7 +391,8 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
       </h3>
       <ul className="space-y-2 text-sm">
         {links.map((link, index) => {
-          const isHashLink = link.url?.startsWith('#') || !link.url;
+          const finalUrl = normalizeUrl(link.url);
+          const isHashLink = finalUrl === '#' || finalUrl.startsWith('#');
           const linkStyle = { color: settings.textColor, opacity: 0.8, transition: 'opacity 0.2s', fontSize: '13px' };
           const hoverIn = (e: any) => e.currentTarget.style.opacity = '1';
           const hoverOut = (e: any) => e.currentTarget.style.opacity = '0.8';
@@ -364,7 +400,7 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
           if (isHashLink) {
             return (
               <li key={index}>
-                <a href={link.url || '#'} style={linkStyle}
+                <a href={finalUrl} style={linkStyle}
                   onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
                   {link.title}
                 </a>
@@ -374,7 +410,7 @@ const FooterLinksSection = ({ type, title }: { type: 'company' | 'shop' | 'help'
 
           return (
             <li key={index}>
-              <Link href={link.url} style={linkStyle}
+              <Link href={finalUrl} prefetch={false} style={linkStyle}
                 onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
                 {link.title}
               </Link>
@@ -500,24 +536,9 @@ export default function Footer() {
               We support all major payment methods and ensure your transactions are safe and encrypted.
             </p>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <FaCcVisa 
-                size={38} 
-                color={settings.textColor} 
-                style={{ opacity: 0.8 }} 
-                title="Visa" 
-              />
-              <FaCcMastercard 
-                size={38} 
-                color={settings.textColor} 
-                style={{ opacity: 0.8 }} 
-                title="Mastercard" 
-              />
-              <FaCcAmex 
-                size={38} 
-                color={settings.textColor} 
-                style={{ opacity: 0.8 }} 
-                title="American Express" 
-              />
+              <VisaIcon color={settings.textColor} />
+              <MastercardIcon color={settings.textColor} />
+              <AmexIcon color={settings.textColor} />
               <span 
                 style={{
                   height: '26px',

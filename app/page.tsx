@@ -537,7 +537,7 @@ export default async function Home() {
     fetchAndTransformProducts(getAllFeaturedProducts),
     fetchAndTransformProducts(getNewArrivalProducts),
     fetchAndTransformProducts(getTopSellingProducts),
-    fetchAndTransformProducts(getAllProducts),
+    fetchAndTransformProducts(() => getAllProducts(24)),
     getAllCategories().then(data => serializeData(data?.categories)),
     getPublicFeaturedVideos(),
     getAllSubCategories(),

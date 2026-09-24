@@ -87,6 +87,21 @@ const nextConfig = {
     return config;
   },
   transpilePackages: ['mongodb'],
+  async redirects() {
+    return [
+      { source: '/privacy', destination: '/return-policy', permanent: false },
+      { source: '/privacy-policy', destination: '/return-policy', permanent: false },
+      { source: '/terms', destination: '/return-policy', permanent: false },
+      { source: '/terms-and-conditions', destination: '/return-policy', permanent: false },
+      { source: '/cookie-policy', destination: '/return-policy', permanent: false },
+      { source: '/returns-and-cancellations', destination: '/return-policy', permanent: false },
+      { source: '/shipping', destination: '/track-order', permanent: false },
+      { source: '/shipping-and-delivery', destination: '/track-order', permanent: false },
+      { source: '/faqs', destination: '/faq', permanent: false },
+      { source: '/shop/new-arrivals', destination: '/shop', permanent: false },
+      { source: '/about', destination: '/contact', permanent: false },
+    ];
+  },
 };
 
 module.exports = nextConfig;

@@ -137,15 +137,16 @@ const FeaturedProductsSection = ({
           </div>
           
           <div className="flex items-center gap-2">
-            <Link href={viewAllLink}>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="border-purple-600 text-purple-700 hover:bg-purple-50 hover:text-purple-800"
-              >
+            <Button 
+              asChild
+              variant="outline" 
+              size="sm" 
+              className="border-purple-600 text-purple-700 hover:bg-purple-50 hover:text-purple-800"
+            >
+              <Link href={viewAllLink}>
                 View All Featured
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <Button
               variant="ghost"
               size="icon"

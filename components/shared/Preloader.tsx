@@ -7,65 +7,39 @@ import LogoAnimated from "./LogoAnimated";
 import { usePreloaderSettings } from "@/hooks/use-preloader-settings";
 
 const Preloader: React.FC = () => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const { settings, isLoading: logoLoading } = usePreloaderSettings();
 
   useEffect(() => {
-    // Check if preloader was already shown in this session
-    if (typeof window !== "undefined") {
-      try {
-        const alreadyShown = sessionStorage.getItem("peeds_preloader_shown");
-        if (alreadyShown) {
-          setLoading(false);
-          if (typeof document !== "undefined") document.body.style.overflow = "";
-          return;
-        }
-      } catch (e) {
-        // Storage access denied
-      }
-    }
-
     // If settings are evaluated and preloader is not enabled, dismiss immediately
-    if (!logoLoading && !settings.isActive) {
+    if (!logoLoading && !settings?.isActive) {
       setLoading(false);
-      try {
-        if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
-      } catch (e) {}
       if (typeof document !== "undefined") document.body.style.overflow = "";
       return;
     }
 
-    // Snappy duration for animation
+    // Display duration for smooth branding intro
     const timer = setTimeout(() => {
       setLoading(false);
-      try {
-        if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
-      } catch (e) {}
       if (typeof document !== "undefined") document.body.style.overflow = "";
-    }, 600); 
+    }, 2800); 
 
     return () => {
       clearTimeout(timer);
       if (typeof document !== "undefined") document.body.style.overflow = "";
     };
-  }, [logoLoading, settings.isActive]);
+  }, [logoLoading, settings?.isActive]);
 
   // If loading is done or inactive, unmount immediately so it cannot block touch events
-  if (!loading || (!logoLoading && !settings.isActive)) return null;
-
-  // Prevent flashing before logo settings are evaluated
-  if (logoLoading) return null;
+  if (!loading || (!logoLoading && !settings?.isActive)) return null;
 
   const dismiss = () => {
     setLoading(false);
-    try {
-      if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
-    } catch (e) {}
     if (typeof document !== "undefined") document.body.style.overflow = "";
   };
 
   // If the preloader setting is inactive or there's no custom URL, fallback to default geometric paths
-  const logoUrl = settings.isActive && settings.logoUrl ? settings.logoUrl : null;
+  const logoUrl = settings?.isActive && settings?.logoUrl ? settings.logoUrl : null;
   const isSvg = logoUrl && (logoUrl.endsWith('.svg') || logoUrl.includes('format=svg'));
 
   return (

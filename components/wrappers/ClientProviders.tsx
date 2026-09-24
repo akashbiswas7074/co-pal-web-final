@@ -17,10 +17,16 @@ const AuthProviderComponent = dynamic(
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
   useEffect(() => {
-    // Activates iOS WebKit touch delegation for all clickable elements
-    const handleTouchStart = () => {};
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    return () => window.removeEventListener('touchstart', handleTouchStart);
+    // Activates iOS WebKit touch delegation only on iOS Safari/WebKit devices
+    const isIOS = typeof navigator !== 'undefined' && 
+      (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+      
+    if (isIOS) {
+      const handleTouchStart = () => {};
+      window.addEventListener('touchstart', handleTouchStart, { passive: true });
+      return () => window.removeEventListener('touchstart', handleTouchStart);
+    }
   }, []);
 
   return (

@@ -108,6 +108,9 @@ const BottomNavSkeleton = () => (
   </div>
 );
 
+let cachedCategories: any[] | null = null;
+let activeCategoriesPromise: Promise<any[] | null> | null = null;
+
 const Navbar = () => {
   const { data: session, status } = useSession();
   const { removeItem, updateItemQuantity, isCartDrawerOpen, setCartDrawerOpen } = useCart();
@@ -128,22 +131,33 @@ const Navbar = () => {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [openSearchModal, setOpenSearchModal] = useState(false);
   const pathname = usePathname();
-  const [categories, setCategories] = useState<any[]>([]);
-
+  const [categories, setCategories] = useState<any[]>(() => cachedCategories || []);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch('/api/categories-nav');
-        const data = await res.json();
-        if (data.success) {
-          setCategories(data.categories);
+    if (cachedCategories) {
+      setCategories(cachedCategories);
+      return;
+    }
+
+    if (!activeCategoriesPromise) {
+      activeCategoriesPromise = (async () => {
+        try {
+          const res = await fetch('/api/categories-nav');
+          const data = await res.json();
+          if (data.success && data.categories) {
+            cachedCategories = data.categories;
+            return data.categories;
+          }
+        } catch (error) {
+          console.error("Error fetching categories:", error);
         }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
-    fetchCategories();
+        return null;
+      })();
+    }
+
+    activeCategoriesPromise.then(cats => {
+      if (cats) setCategories(cats);
+    });
   }, []);
 
   // Check if we're on an auth page
@@ -176,10 +190,13 @@ const Navbar = () => {
 
   useEffect(() => {
     let ticking = false;
+    let rafId: number | null = null;
+    let isMounted = true;
 
     const controlNavbar = () => {
       if (!ticking) {
-        window.requestAnimationFrame(() => {
+        rafId = window.requestAnimationFrame(() => {
+          if (!isMounted) return;
           const currentScrollY = window.scrollY;
           
           setIsScrolled(prev => {
@@ -205,7 +222,11 @@ const Navbar = () => {
     };
 
     window.addEventListener('scroll', controlNavbar, { passive: true });
-    return () => window.removeEventListener('scroll', controlNavbar);
+    return () => {
+      isMounted = false;
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', controlNavbar);
+    };
   }, []);
 
   // Effect to handle body scroll lock when mobile menu, cart drawer, or search modal is open
@@ -250,7 +271,7 @@ const Navbar = () => {
 
   return (
     <>
-      <div className={`fixed top-0 left-0 right-0 z-[100] transition-transform duration-300 ${show}`}>
+      <div className={`fixed top-0 left-0 right-0 z-[1000] transition-transform duration-300 ${show} ${show === "-translate-y-full" ? "pointer-events-none" : ""}`}>
         {!isAuthPage && (
           <Suspense fallback={<TopBarSkeleton />}>
             <TopBarComponent />
@@ -528,22 +549,23 @@ const Navbar = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
-                      <Link href="/auth/signin">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center backdrop-blur-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-95 text-xs px-3 py-2 ml-1 font-medium border"
-                          style={{ 
-                            backgroundColor: hexToRgba(dynamicTextColor, 0.1), 
-                            borderColor: hexToRgba(dynamicTextColor, 0.2),
-                            color: dynamicTextColor
-                          }}
-                        >
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center backdrop-blur-sm transition-all duration-300 shadow-sm hover:shadow-md active:scale-95 text-xs px-3 py-2 ml-1 font-medium border"
+                        style={{ 
+                          backgroundColor: hexToRgba(dynamicTextColor, 0.1), 
+                          borderColor: hexToRgba(dynamicTextColor, 0.2),
+                          color: dynamicTextColor
+                        }}
+                      >
+                        <Link href="/auth/signin">
                           <User className="h-4 w-4 mr-2" />
                           <span className="hidden sm:inline">Sign In</span>
                           <span className="sm:hidden">Login</span>
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     )}
 
                     {/* Burger Menu Button (Far Right) */}
@@ -566,9 +588,9 @@ const Navbar = () => {
 
         {/* Mobile menu - improved responsive design */}
         <div className={`
-          fixed inset-0 z-[110] 
+          fixed inset-0 z-[1100] 
           transition-opacity duration-300
-          ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+          ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}
         `} suppressHydrationWarning>
           {/* Backdrop */}
           <div
@@ -756,21 +778,21 @@ const Navbar = () => {
                   </Button>
                 </div>
               ) : (
-                <Link href="/auth/signin">
-                  <Button
-                    className="w-full flex items-center justify-center py-3 sm:py-6 backdrop-blur-md transition-all duration-300"
-                    style={{ 
-                      backgroundColor: hexToRgba(navbarSettings?.textColor || '#ffffff', 0.1), 
-                      color: navbarSettings?.textColor || 'white',
-                      borderColor: hexToRgba(navbarSettings?.textColor || '#ffffff', 0.2),
-                      borderWidth: '1px'
-                    }}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
+                <Button
+                  asChild
+                  className="w-full flex items-center justify-center py-3 sm:py-6 backdrop-blur-md transition-all duration-300"
+                  style={{ 
+                    backgroundColor: hexToRgba(navbarSettings?.textColor || '#ffffff', 0.1), 
+                    color: navbarSettings?.textColor || 'white',
+                    borderColor: hexToRgba(navbarSettings?.textColor || '#ffffff', 0.2),
+                    borderWidth: '1px'
+                  }}
+                >
+                  <Link href="/auth/signin" onClick={() => setIsMobileMenuOpen(false)}>
                     <User className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                     Sign In
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               )}
             </div>
           </div>

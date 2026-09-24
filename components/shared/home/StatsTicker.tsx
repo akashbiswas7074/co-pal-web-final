@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { getStatsTickerData } from '@/lib/database/actions/stats-ticker.actions';
 
 interface TickerItem {
@@ -50,60 +49,47 @@ export default function StatsTicker() {
     if (loading) return null; // Avoid flashing default UI if you want, or render default
 
     return (
-        /**
-         * Outer wrapper:
-         *  - overflow-hidden clips the extra width of the rotated band
-         *  - negative marginTop overlaps the bottom of the carousel
-         *  - z-[1000] sits above all other sections
-         *  - height is generous so the angled band fills fully
-         */
         <div
-            className="relative w-full max-w-[100vw] z-[1000] overflow-hidden -mt-16 md:-mt-24"
-            style={{ height: '250px' }}
+            className="relative w-full overflow-hidden select-none shadow-sm z-10"
+            style={{
+                background: backgroundColor,
+            }}
         >
-            {/* Rotated band — extra wide so clipped edges don't show white */}
-            <div
-                className="absolute left-[-10%] right-[-10%] top-[20px] md:top-[35px]"
-                style={{
-                    transform: 'rotate(-2deg)',
-                    transformOrigin: 'center center',
-                    background: backgroundColor,
-                }}
-            >
-                {/* Text tilts with the band — same angle */}
-                <div className="py-6 md:py-10">
-                    <motion.div
-                        className="flex gap-8 md:gap-12 whitespace-nowrap"
-                        animate={{ x: [0, '-33.33%'] }}
-                        transition={{
-                            repeat: Infinity,
-                            repeatType: 'loop',
-                            duration: speed,
-                            ease: 'linear',
-                        }}
-                    >
-                        {duplicated.map((item, i) => (
-                            <div
-                                key={i}
-                                className="flex items-center gap-2 font-bold tracking-widest uppercase"
-                                style={{ fontSize: '13px' }}
+            <div className="py-3 md:py-4">
+                <style>{`
+                    @keyframes tickerMarquee {
+                        0% { transform: translate3d(0, 0, 0); }
+                        100% { transform: translate3d(-33.333%, 0, 0); }
+                    }
+                `}</style>
+                <div
+                    className="flex gap-8 md:gap-12 whitespace-nowrap"
+                    style={{
+                        animation: `tickerMarquee ${speed}s linear infinite`,
+                        willChange: 'transform'
+                    }}
+                >
+                    {duplicated.map((item, i) => (
+                        <div
+                            key={i}
+                            className="flex items-center gap-2 font-bold tracking-widest uppercase"
+                            style={{ fontSize: '13px' }}
+                        >
+                            <span
+                                className="text-base md:text-lg"
+                                style={{ color: item.iconColor || '#ffffff' }}
                             >
-                                <span
-                                    className="text-base md:text-lg"
-                                    style={{ color: item.iconColor || '#ffffff' }}
-                                >
-                                    {item.emoji}
-                                </span>
-                                <span
-                                    className="text-[11px] md:text-[14px]"
-                                    style={{ color: item.textColor || '#ffffff' }}
-                                >
-                                    {item.label}
-                                </span>
-                                <span style={{ marginLeft: '16px', opacity: 0.4, color: '#ffffff' }}>•</span>
-                            </div>
-                        ))}
-                    </motion.div>
+                                {item.emoji}
+                            </span>
+                            <span
+                                className="text-[11px] md:text-[14px]"
+                                style={{ color: item.textColor || '#1f2937' }}
+                            >
+                                {item.label}
+                            </span>
+                            <span style={{ marginLeft: '16px', opacity: 0.4, color: item.textColor || '#1f2937' }}>•</span>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

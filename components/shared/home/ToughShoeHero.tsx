@@ -15,15 +15,16 @@ const ToughShoeHero = () => {
         <p className="text-base md:text-lg text-gray-700 mb-8 max-w-lg">
           Concrete. Double Rims. Built for the outdoor game.
         </p>
-        <Link href="/shop" passHref>
-          <Button 
-            size="lg" 
-            className="bg-black text-white hover:bg-gray-800 rounded-md px-10 py-3 h-auto text-base font-semibold"
-            aria-label="Shop Luka .77 Space Navigator shoes"
-          >
+        <Button 
+          asChild
+          size="lg" 
+          className="bg-black text-white hover:bg-gray-800 rounded-md px-10 py-3 h-auto text-base font-semibold"
+          aria-label="Shop Luka .77 Space Navigator shoes"
+        >
+          <Link href="/shop">
             Shop
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     </div>
   );

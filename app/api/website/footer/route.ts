@@ -28,16 +28,20 @@ export async function GET(request: NextRequest) {
         linkedin: "",
       },
       companyLinks: [
-        { title: "About Us", url: "/about" },
+        { title: "About Us", url: "/contact" },
         { title: "Contact Us", url: "/contact" }
       ],
       shopLinks: [
         { title: "All Products", url: "/shop" },
-        { title: "New Arrivals", url: "/shop/new-arrivals" }
+        { title: "New Arrivals", url: "/shop" }
       ],
       helpLinks: [
-        { title: "FAQs", url: "/faqs" },
-        { title: "Shipping", url: "/shipping" }
+        { title: "FAQs", url: "/faq" },
+        { title: "Shipping & Tracking", url: "/track-order" }
+      ],
+      policyLinks: [
+        { title: "Returns & Policy", url: "/return-policy" },
+        { title: "Terms & Conditions", url: "/return-policy" }
       ],
       copyrightText: `© ${new Date().getFullYear()} ${siteConfig.name}. All rights reserved.`,
       isActive: true

@@ -43,9 +43,13 @@ const NavbarInput = ({ responsive, openSearchModal = false }: {
     // Only apply fixed positioning for desktop view (non-responsive mode)
     if (!responsive) {
       let ticking = false;
+      let rafId: number | null = null;
+      let isMounted = true;
+
       const handleScroll = () => {
         if (!ticking) {
-          window.requestAnimationFrame(() => {
+          rafId = window.requestAnimationFrame(() => {
+            if (!isMounted) return;
             const shouldBeFixed = window.scrollY > 200;
             setIsFixed(prev => (prev !== shouldBeFixed ? shouldBeFixed : prev));
             ticking = false;
@@ -55,7 +59,11 @@ const NavbarInput = ({ responsive, openSearchModal = false }: {
       };
       
       window.addEventListener('scroll', handleScroll, { passive: true });
-      return () => window.removeEventListener('scroll', handleScroll);
+      return () => {
+        isMounted = false;
+        if (rafId !== null) window.cancelAnimationFrame(rafId);
+        window.removeEventListener('scroll', handleScroll);
+      };
     }
   }, [responsive]);
   

@@ -178,11 +178,11 @@ const FeaturedVideoSection: React.FC<FeaturedVideoSectionProps> = ({ videos }) =
       >
         <div className="flex justify-between items-center mb-5 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">DIY Products Videos</h2>
-          <Link href="/videos">
-            <Button variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
+          <Button asChild variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
+            <Link href="/videos">
               View All
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         <div className="embla overflow-hidden -mx-2 sm:-mx-3" ref={emblaRef}>

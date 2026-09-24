@@ -855,16 +855,21 @@ export const getAllFeaturedProducts = unstable_cache(
   }
 );
 
-export async function getAllProducts() {
+export async function getAllProducts(limit?: number) {
   try {
     await connectToDatabase();
 
-    const products = await Product.find()
+    let query = Product.find()
       .populate({ path: "tagValues.tag", model: Tag, select: "name", strictPopulate: false })
       .populate({ path: "category", model: Category, select: "name slug", strictPopulate: false })
       .populate({ path: "subCategories", model: SubCategory, select: "name slug", strictPopulate: false })
-      .sort({ createdAt: -1 })
-      .lean(); // Use lean
+      .sort({ createdAt: -1 });
+
+    if (limit && typeof limit === 'number' && limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const products = await query.lean();
 
     if (!products || products.length === 0) {
       return {

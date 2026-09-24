@@ -1,9 +1,8 @@
 "use client";
 import useEmblaCarousel from "embla-carousel-react";
-import { Star, ChevronLeft, ChevronRight, CheckCircle, MessageSquare, ShoppingBag } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, CheckCircle, MessageSquare, ShoppingBag, Instagram } from "lucide-react";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Image from "next/image";
-import { CiInstagram } from "react-icons/ci";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -228,7 +227,7 @@ const ReviewComment: React.FC<ReviewCommentProps> = ({ review, productView = fal
 				{/* Instagram Handle (for fallback reviews) */}
 				{review.instagram && (
 					<p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-						<CiInstagram size={12} />
+						<Instagram className="w-3 h-3 text-pink-500" />
 						{review.instagram}
 					</p>
 				)}

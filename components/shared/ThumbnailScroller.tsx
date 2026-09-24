@@ -32,10 +32,11 @@ export default function ThumbnailScroller({ children, className = '' }: Thumbnai
 
     // Function to update scroll indicators
     let ticking = false;
+    let rafId: number | null = null;
     const updateScrollIndicators = () => {
       if (ticking) return;
       ticking = true;
-      requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(() => {
         ticking = false;
         if (!container) return;
         if (!isMobile) {
@@ -124,6 +125,7 @@ export default function ThumbnailScroller({ children, className = '' }: Thumbnai
     container.addEventListener('click', handleButtonClick);
 
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       container.removeEventListener('scroll', updateScrollIndicators);
       window.removeEventListener('resize', updateScrollIndicators);
       container.removeEventListener('click', handleButtonClick);

@@ -35,20 +35,27 @@ interface DynamicHeroSectionProps {
   };
 }
 
-// Fixed intersection observer hook with proper typing
+// Intersection observer hook with callback ref to guarantee immediate element attachment
 const useIntersectionObserver = ({ threshold = 0.1, rootMargin = '50px' }: IntersectionObserverInit = {}) => {
-  const ref = useRef<HTMLElement>(null);
-  const [isIntersecting, setIsIntersecting] = useState(false);
-  const [hasIntersected, setHasIntersected] = useState(false);
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  const [hasIntersected, setHasIntersected] = useState(true);
+
+  const ref = useCallback((node: HTMLElement | null) => {
+    if (node !== null) {
+      setElement(node);
+    }
+  }, []);
 
   useEffect(() => {
-    const element = ref.current;
     if (!element) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setHasIntersected(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsIntersecting(entry.isIntersecting);
-        if (entry.isIntersecting && !hasIntersected) {
+        if (entry.isIntersecting) {
           setHasIntersected(true);
         }
       },
@@ -56,9 +63,10 @@ const useIntersectionObserver = ({ threshold = 0.1, rootMargin = '50px' }: Inter
     );
 
     observer.observe(element);
-  }, [threshold, rootMargin]);
+    return () => observer.disconnect();
+  }, [element, threshold, rootMargin]);
 
-  return { ref, isIntersecting, hasIntersected };
+  return { ref, hasIntersected };
 };
 
 // Enhanced loading skeleton component
@@ -143,7 +151,6 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
   const [isVideoLoaded, setVideoLoaded] = useState(false);
   const [videoIsMuted, setVideoIsMuted] = useState(true);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [isContentReady, setIsContentReady] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [backgroundImageError, setBackgroundImageError] = useState(false);
@@ -190,7 +197,7 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
   // Animation system
   const getAnimationClass = useCallback(() => {
     const baseClass = 'transition-all duration-700 ease-out';
-    if (!hasIntersected) return `${baseClass} opacity-0 translate-y-8`;
+    if (!hasIntersected) return `${baseClass} opacity-90`;
 
     switch (entryAnimation) {
       case 'slideInLeft': return `${baseClass} opacity-100 transform translate-x-0`;
@@ -276,13 +283,15 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
                   alt={title || 'Hero image'}
                   width={800}
                   height={600}
+                  sizes="(max-width: 768px) 100vw, 800px"
                   className={cn(
                     "w-full h-full object-cover transition-all duration-500 group-hover:scale-105",
                     isImageLoaded ? "opacity-100" : "opacity-0"
                   )}
                   onLoad={() => setIsImageLoaded(true)}
                   onError={handleImageError}
-                  priority
+                  priority={data?.order === 0 || data?.order === 1}
+                  loading={data?.order === 0 || data?.order === 1 ? "eager" : "lazy"}
                 />
                 {!isImageLoaded && (
                   <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
@@ -424,43 +433,39 @@ export default function DynamicHeroSection({ data }: DynamicHeroSectionProps) {
     };
 
     return (
-      <Link key={button._id || index} href={button.link || '#'}>
-        <Button
-          size="lg"
-          variant={getButtonVariant(button.variant)}
+      <Button
+        key={button._id || index}
+        asChild
+        size="lg"
+        variant={getButtonVariant(button.variant)}
+        className={cn(getButtonClasses())}
+        style={getButtonStyles()}
+        onMouseEnter={(e) => {
+          // Enhanced hover effects for custom colors
+          if (buttonBackgroundColor && buttonTextColor) {
+            const target = e.target as HTMLElement;
+            target.style.filter = 'brightness(1.1)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          // Reset hover effects
+          if (buttonBackgroundColor && buttonTextColor) {
+            const target = e.target as HTMLElement;
+            target.style.filter = 'brightness(1)';
+          }
+        }}
+      >
+        <Link 
+          href={button.link || '#'}
           onClick={() => handleButtonClick(button)}
-          className={cn(getButtonClasses())}
-          style={getButtonStyles()}
-          onMouseEnter={(e) => {
-            // Enhanced hover effects for custom colors
-            if (buttonBackgroundColor && buttonTextColor) {
-              const target = e.target as HTMLElement;
-              target.style.filter = 'brightness(1.1)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            // Reset hover effects
-            if (buttonBackgroundColor && buttonTextColor) {
-              const target = e.target as HTMLElement;
-              target.style.filter = 'brightness(1)';
-            }
-          }}
         >
           {button.label}
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     );
   }, [backgroundImage, backgroundImageError, buttonBackgroundColor, buttonTextColor, handleButtonClick]);
 
-  // Content readiness effect
-  useEffect(() => {
-    const timer = setTimeout(() => setIsContentReady(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
 
-  if (!isContentReady) {
-    return <HeroSkeleton />;
-  }
 
   // Pattern-specific rendering
   const renderPatternContent = () => {

@@ -46,8 +46,12 @@ interface UseWebsiteFooterResult {
   refetch: () => Promise<void>;
 }
 
+// Global in-memory cache to prevent redundant fetches across multiple footer subcomponents
+let cachedFooterData: WebsiteFooter | null = null;
+let activeFetchPromise: Promise<WebsiteFooter | null> | null = null;
+
 export function useWebsiteFooter(): UseWebsiteFooterResult {
-  const [footer, setFooter] = useState<WebsiteFooter>({
+  const [footer, setFooter] = useState<WebsiteFooter>(() => cachedFooterData || {
     contactInfo: {
       email: siteConfig.contact.email,
       phone: siteConfig.contact.phone,
@@ -62,48 +66,46 @@ export function useWebsiteFooter(): UseWebsiteFooterResult {
     },
     copyrightText: `© ${new Date().getFullYear()} ${siteConfig.name}. All rights reserved.`,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!cachedFooterData);
   const [error, setError] = useState<string | null>(null);
-  const fetchInitiated = useRef(false);
 
   const fetchFooter = async () => {
-    if (fetchInitiated.current && !isLoading) setIsLoading(true);
-    fetchInitiated.current = true;
-    setError(null);
+    if (cachedFooterData) {
+      setFooter(cachedFooterData);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!activeFetchPromise) {
+      activeFetchPromise = (async () => {
+        try {
+          const response = await fetch("/api/website/footer");
+          if (!response.ok) return null;
+          const data = await response.json();
+          if (data.success && data.footer) {
+            cachedFooterData = data.footer;
+            return data.footer;
+          }
+        } catch (e) {
+          console.error("Footer fetch error:", e);
+        }
+        return null;
+      })();
+    }
 
     try {
-      const response = await fetch("/api/website/footer", {
-        cache: "no-store",
-        headers: {
-          Pragma: "no-cache",
-          "Cache-Control": "no-cache",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.footer) {
-        setFooter(data.footer);
-      } else {
-        console.warn("No footer data found, using default values");
+      const result = await activeFetchPromise;
+      if (result) {
+        setFooter(result);
       }
     } catch (err: any) {
-      console.error("Error fetching footer data:", err);
       setError("Failed to load footer data");
-      // Continue using the default footer set in useState
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    // Skip if we've already initiated a fetch
-    if (fetchInitiated.current) return;
-
     fetchFooter();
   }, []);
 

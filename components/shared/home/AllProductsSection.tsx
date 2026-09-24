@@ -76,7 +76,7 @@ const AllProductsSection: React.FC<AllProductsSectionProps> = ({ products }) => 
     <div id="all-products">
       <ProductCarousel
         heading="ALL PRODUCTS"
-        products={enhancedProducts}
+        products={enhancedProducts.slice(0, 16)}
         viewAllLink="/shop"
         autoplay={true}
         showDiscount={true}

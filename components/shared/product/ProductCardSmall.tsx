@@ -48,6 +48,10 @@ interface ProductProps {
   viewMode?: 'grid' | 'list'; // Add support for grid or list view
 }
 
+// Global in-memory cache for sample checks across product cards
+const sampleCache = new Map<string, any[]>();
+const pendingSamplePromises = new Map<string, Promise<any[]>>();
+
 export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = 'grid' }) => {
   const { data: session, status } = useSession();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -73,23 +77,52 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
   const productId = product.id || product._id || '';
   const isProductInWishlist = productId ? isInWishlist(productId) : false;
 
-  // Pre-check for samples availability
+  // Pre-check for samples availability with in-memory caching & request deduplication
   useEffect(() => {
+    let isMounted = true;
     const checkSamples = async () => {
       if (!productId) return;
+      
+      // Fast path from cache
+      if (sampleCache.has(productId)) {
+        const cached = sampleCache.get(productId)!;
+        if (isMounted) {
+          setSamples(cached);
+          setHasSamples(cached.length > 0);
+        }
+        return;
+      }
+
       try {
-        const res = await getSamplesByProductId(productId);
-        if (res && res.length > 0) {
-          setSamples(res);
-          setHasSamples(true);
-        } else {
-          setHasSamples(false);
+        let promise = pendingSamplePromises.get(productId);
+        if (!promise) {
+          promise = getSamplesByProductId(productId).then(res => {
+            const arr = Array.isArray(res) ? res : [];
+            sampleCache.set(productId, arr);
+            pendingSamplePromises.delete(productId);
+            return arr;
+          }).catch(() => {
+            pendingSamplePromises.delete(productId);
+            return [];
+          });
+          pendingSamplePromises.set(productId, promise);
+        }
+
+        const res = await promise;
+        if (isMounted) {
+          if (res && res.length > 0) {
+            setSamples(res);
+            setHasSamples(true);
+          } else {
+            setHasSamples(false);
+          }
         }
       } catch (error) {
         console.error("Error checking samples:", error);
       }
     };
     checkSamples();
+    return () => { isMounted = false; };
   }, [productId]);
 
   const {
@@ -553,16 +586,13 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <Link href={`/product/${slug}`} className={cn(
-        "text-black no-underline",
-        viewMode === 'list' ? "flex w-full" : "block"
+      <div className={cn(
+        "relative overflow-hidden bg-gray-50",
+        viewMode === 'list'
+          ? "w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0"
+          : "aspect-square w-full"
       )}>
-        <div className={cn(
-          "relative overflow-hidden bg-gray-50",
-          viewMode === 'list'
-            ? "w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0"
-            : "aspect-square w-full"
-        )}>
+        <Link href={`/product/${slug}`} className="block w-full h-full relative" aria-label={name}>
           {/* Glass Shine Overlay */}
           <div className="glass-shine-overlay" />
           <Image
@@ -574,7 +604,7 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
               secondaryImage ? "group-hover:opacity-0" : "group-hover:scale-105",
               isSoldOut && "opacity-60"
             )}
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
             onError={(e) => {
               // Fallback to placeholder if image fails to load
               const target = e.target as HTMLImageElement;
@@ -589,11 +619,12 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
               src={secondaryImage}
               alt={`${name} secondary view`}
               fill
+              loading="lazy"
               className={cn(
                 "object-cover absolute inset-0 opacity-0 transition-all duration-700 ease-in-out transform scale-110 group-hover:opacity-100 group-hover:scale-100",
                 isSoldOut && "opacity-0" // Don't show secondary if sold out and we want to keep the label clear
               )}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
@@ -638,6 +669,7 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
               </span>
             )}
           </div>
+        </Link>
 
           {/* Wishlist heart icon with modern monochrome styling */}
           <button
@@ -683,10 +715,13 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
           )}
         </div>
 
-        <div className={cn(
-          "p-3",
-          viewMode === 'list' && "flex-1"
-        )}>
+        <Link
+          href={`/product/${slug}`}
+          className={cn(
+            "p-3 text-black no-underline block hover:opacity-90 transition-opacity",
+            viewMode === 'list' && "flex-1"
+          )}
+        >
           {/* Product ID badge with refined styling */}
           {displayProductId && (
             <div className="mb-2 flex items-center gap-1.5 text-gray-400">
@@ -792,20 +827,21 @@ export const ProductCardSmall: React.FC<ProductProps> = ({ product, viewMode = '
               </p>
             </div>
           </div>
-        </div>
-      </Link>
+        </Link>
 
-      <SampleSelectionModal 
-        product={{
-          _id: productId,
-          name: name,
-          slug: slug,
-          subProducts: subProducts
-        }}
-        samples={samples}
-        isOpen={isSampleModalOpen}
-        onOpenChange={setIsSampleModalOpen}
-      />
-    </div>
+        {isSampleModalOpen && (
+          <SampleSelectionModal 
+            product={{
+              _id: productId,
+              name: name,
+              slug: slug,
+              subProducts: subProducts
+            }}
+            samples={samples}
+            isOpen={isSampleModalOpen}
+            onOpenChange={setIsSampleModalOpen}
+          />
+        )}
+      </div>
   );
 };

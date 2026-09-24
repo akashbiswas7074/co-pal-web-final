@@ -39,6 +39,13 @@ const onBannerLoad = () => {
   bannerLoadCallbacks.length = 0; // Clear callbacks
 };
 
+// Fallback to unblock sections if banner carousel is replaced or delayed
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    if (!bannerHasLoaded) onBannerLoad();
+  }, 400);
+}
+
 const waitForBanner = (callback: () => void) => {
   if (bannerHasLoaded) {
     callback();

@@ -30,6 +30,15 @@ interface BannerCarouselProps {
   onBannerLoad?: () => void; // Callback when banners are loaded
 }
 
+const optimizeCloudinaryBanner = (url: string, isMobile: boolean) => {
+  if (!url || typeof url !== 'string') return url;
+  if (url.includes('res.cloudinary.com') && url.includes('/image/upload/')) {
+    const width = isMobile ? 960 : 1600;
+    return url.replace('/image/upload/', `/image/upload/f_auto,q_auto:good,w_${width}/`);
+  }
+  return url;
+};
+
 // Enhanced skeleton loader for banner
 const BannerSkeleton = ({ isMobile }: { isMobile: boolean }) => (
   <div className={`relative w-full ${isMobile ? "h-[80vh] mt-[60px]" : "h-[85vh]"} overflow-hidden mb-[20px]`}>
@@ -273,63 +282,58 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
       ref={containerRef}
       className={cn(
         `relative w-full ${isMobileView ? "h-[80vh] mt-[60px]" : "h-[85vh]"
-        } overflow-hidden mb-[20px] group animate-fade-in`,
+        } overflow-hidden group animate-fade-in`,
         className
       )}
       onMouseEnter={() => setAutoPlay(false)}
       onMouseLeave={() => setAutoPlay(true)}
     >
       {banners.map((banner, index) => {
-        const BannerWrapper = banner.linkUrl ?
-          ({ children }: { children: React.ReactNode }) => (
-            <Link
-              href={banner.linkUrl || '#'}
-              className="block w-full h-full relative"
-              onClick={() => banner.public_id && trackClick(banner.public_id)}
-            >
-              {children}
-            </Link>
-          ) :
-          ({ children }: { children: React.ReactNode }) => (
-            <div className="w-full h-full relative">{children}</div>
-          );
-
         const isImageLoaded = imagesLoaded.has(banner.url);
 
-        // Removed the optimization that unmounts non-adjacent banners 
-        // to ensure all images can pre-fetch and transitions work correctly.
+        const innerContent = (
+          <>
+            {!isImageLoaded && (
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-shimmer" />
+            )}
+
+            <Image
+              src={optimizeCloudinaryBanner(banner.url, isMobileView)}
+              alt={banner.altText || `Banner ${index + 1}`}
+              fill
+              priority={index === 0}
+              unoptimized={true}
+              sizes="100vw"
+              className="object-cover w-full h-full"
+              style={{ objectPosition: "center" }}
+              onLoad={() => handleImageLoad(banner.url)}
+              onError={() => {
+                console.error(`Failed to load banner image: ${banner.url}`);
+                handleImageLoad(banner.url);
+              }}
+            />
+          </>
+        );
 
         return (
           <div
             key={banner.public_id || index}
-            className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${currentIndex === index ? "opacity-100 z-10" : "opacity-0 z-0"
+            className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${currentIndex === index ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
               }`}
           >
-            <BannerWrapper>
-              {/* Show skeleton until image loads */}
-              {!isImageLoaded && (
-                <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-shimmer" />
-              )}
-
-              <Image
-                src={banner.url}
-                alt={banner.altText || `Banner ${index + 1}`}
-                fill
-                priority={priority} // All carousel images get priority loading to prevent opacity-0 lazy load bugs
-                sizes="(max-width: 768px) 100vw, 1200px"
-                className={cn(
-                  "object-cover transition-opacity duration-300",
-                  isImageLoaded ? "opacity-100" : "opacity-0"
-                )}
-                style={{ objectPosition: "center" }}
-                onLoad={() => handleImageLoad(banner.url)}
-                unoptimized={banner.url.includes("cloudinary")}
-                onError={() => {
-                  console.error(`Failed to load banner image: ${banner.url}`);
-                  handleImageLoad(banner.url); // Mark as "loaded" to hide skeleton
-                }}
-              />
-            </BannerWrapper>
+            {banner.linkUrl ? (
+              <Link
+                href={banner.linkUrl}
+                className="block w-full h-full relative"
+                onClick={() => banner.public_id && trackClick(banner.public_id)}
+              >
+                {innerContent}
+              </Link>
+            ) : (
+              <div className="w-full h-full relative">
+                {innerContent}
+              </div>
+            )}
           </div>
         );
       })}

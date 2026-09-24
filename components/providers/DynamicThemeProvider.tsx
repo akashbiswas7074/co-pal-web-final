@@ -34,25 +34,48 @@ interface DynamicThemeProviderProps {
   children: ReactNode;
 }
 
+let cachedTheme: ThemeSettings | null = null;
+let activeThemePromise: Promise<ThemeSettings | null> | null = null;
+
 export default function DynamicThemeProvider({ children }: DynamicThemeProviderProps) {
-  const [theme, setTheme] = useState<ThemeSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<ThemeSettings | null>(() => cachedTheme);
+  const [loading, setLoading] = useState(!cachedTheme);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTheme = async () => {
+    if (cachedTheme) {
+      setTheme(cachedTheme);
+      applyThemeToDOM(cachedTheme);
+      setLoading(false);
+      return;
+    }
+
+    if (!activeThemePromise) {
+      activeThemePromise = (async () => {
+        try {
+          const response = await fetch('/api/website/theme');
+          const data = await response.json();
+          if (data.success && data.theme) {
+            cachedTheme = data.theme;
+            return data.theme;
+          }
+        } catch (err) {
+          console.error('Error fetching theme:', err);
+        }
+        return null;
+      })();
+    }
+
     try {
       setError(null);
-      const response = await fetch('/api/website/theme');
-      const data = await response.json();
-      
-      if (data.success && data.theme) {
-        setTheme(data.theme);
-        applyThemeToDOM(data.theme);
+      const res = await activeThemePromise;
+      if (res) {
+        setTheme(res);
+        applyThemeToDOM(res);
       } else {
         setError('Failed to load theme settings');
       }
     } catch (err) {
-      console.error('Error fetching theme:', err);
       setError('Error loading theme');
     } finally {
       setLoading(false);

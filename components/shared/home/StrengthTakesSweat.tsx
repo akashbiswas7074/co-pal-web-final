@@ -13,24 +13,26 @@ const StrengthTakesSweat = () => {
           The training styles that aren&apos;t afraid to put in the work.
         </p>
         <div className="flex justify-center space-x-4">
-          <Link href="/shop?category=men" passHref>
-            <Button 
-              variant="default" 
-              size="lg" 
-              className="bg-black text-white hover:bg-gray-800 rounded-md px-8 py-3 text-sm md:text-base"
-            >
+          <Button 
+            asChild
+            variant="default" 
+            size="lg" 
+            className="bg-black text-white hover:bg-gray-800 rounded-md px-8 py-3 text-sm md:text-base"
+          >
+            <Link href="/shop?category=men">
               Shop Men&apos;s
-            </Button>
-          </Link>
-          <Link href="/shop?category=women" passHref>
-            <Button 
-              variant="default" 
-              size="lg" 
-              className="bg-black text-white hover:bg-gray-800 rounded-md px-8 py-3 text-sm md:text-base"
-            >
+            </Link>
+          </Button>
+          <Button 
+            asChild
+            variant="default" 
+            size="lg" 
+            className="bg-black text-white hover:bg-gray-800 rounded-md px-8 py-3 text-sm md:text-base"
+          >
+            <Link href="/shop?category=women">
               Shop Women&apos;s
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
     </section>

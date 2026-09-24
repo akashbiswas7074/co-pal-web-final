@@ -159,15 +159,16 @@ const BestsellingSection = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={viewAllLink}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-amber-600 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
-            >
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="border-amber-600 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+          >
+            <Link href={viewAllLink}>
               View All
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <Button
             variant="ghost"
             size="icon"

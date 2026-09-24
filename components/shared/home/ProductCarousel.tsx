@@ -142,11 +142,11 @@ const ProductCarousel = ({
     <div className="w-full mx-auto py-8 sm:py-10 relative px-4 sm:px-6 lg:px-8 max-w-[90%]"> {/* Added max-w-7xl and responsive padding */}
       <div className="flex justify-between items-center mb-5 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">{heading}</h2>
-        <Link href={viewAllLink}>
-          <Button variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
+        <Button asChild variant="link" size="sm" className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:no-underline">
+          <Link href={viewAllLink}>
             Shop All
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
       <div className="embla overflow-hidden -mx-2 sm:-mx-3" ref={emblaRef}>
         <div className="embla__container flex -ml-2 sm:-ml-3">
