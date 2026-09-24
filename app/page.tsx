@@ -728,7 +728,13 @@ export default async function Home() {
         ) : (
           // Fallback to a default order if no sections are configured
           <>
-            <LazyBannerCarousel />
+            {heroSections && heroSections.length > 0 ? (
+              heroSections.map((section: any) => (
+                <DynamicHeroSection key={section._id} data={section} />
+              ))
+            ) : (
+              <LazyBannerCarousel />
+            )}
             <StatsTicker />
 
             <StrengthTakesSweat />

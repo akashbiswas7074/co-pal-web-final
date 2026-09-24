@@ -21,22 +21,22 @@ export interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
-  name: "POUL & CO",
-  description: "Premium fashion e-commerce store",
+  name: "PEEDS",
+  description: "Professional Sports Shoes, Gears & Equipment",
   logo: {
     useImage: true,
-    imagePath: "/images/logo.png",
+    imagePath: "https://res.cloudinary.com/dlrlet9fg/image/upload/v1777825306/products/buxqiaoquzcokc8vmtf0.webp",
     showText: true,
-    text: "POUL & CO"
+    text: "PEEDS"
   },
   contact: {
-    email: "support@poulandco.com",
-    phone: "+1 (123) 456-7890",
-    address: "123 Fashion Street, New York, NY 10001"
+    email: "support@peeds.in",
+    phone: "+91 98765 43210",
+    address: "Surat, Gujarat, India"
   },
   social: {
-    facebook: "https://facebook.com/poulandco",
-    instagram: "https://instagram.com/poulandco",
-    twitter: "https://twitter.com/poulandco"
+    facebook: "https://facebook.com/peeds",
+    instagram: "https://instagram.com/peeds",
+    twitter: "https://twitter.com/peeds"
   }
 }

@@ -13,18 +13,24 @@ const Preloader: React.FC = () => {
   useEffect(() => {
     // Check if preloader was already shown in this session
     if (typeof window !== "undefined") {
-      const alreadyShown = sessionStorage.getItem("peeds_preloader_shown");
-      if (alreadyShown) {
-        setLoading(false);
-        if (typeof document !== "undefined") document.body.style.overflow = "";
-        return;
+      try {
+        const alreadyShown = sessionStorage.getItem("peeds_preloader_shown");
+        if (alreadyShown) {
+          setLoading(false);
+          if (typeof document !== "undefined") document.body.style.overflow = "";
+          return;
+        }
+      } catch (e) {
+        // Storage access denied
       }
     }
 
     // If settings are evaluated and preloader is not enabled, dismiss immediately
     if (!logoLoading && !settings.isActive) {
       setLoading(false);
-      if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+      try {
+        if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+      } catch (e) {}
       if (typeof document !== "undefined") document.body.style.overflow = "";
       return;
     }
@@ -32,9 +38,11 @@ const Preloader: React.FC = () => {
     // Snappy duration for animation
     const timer = setTimeout(() => {
       setLoading(false);
-      if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+      try {
+        if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+      } catch (e) {}
       if (typeof document !== "undefined") document.body.style.overflow = "";
-    }, 1500); 
+    }, 1200); 
 
     return () => {
       clearTimeout(timer);
@@ -48,6 +56,14 @@ const Preloader: React.FC = () => {
   // Prevent flashing before logo settings are evaluated
   if (logoLoading) return null;
 
+  const dismiss = () => {
+    setLoading(false);
+    try {
+      if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+    } catch (e) {}
+    if (typeof document !== "undefined") document.body.style.overflow = "";
+  };
+
   // If the preloader setting is inactive or there's no custom URL, fallback to default geometric paths
   const logoUrl = settings.isActive && settings.logoUrl ? settings.logoUrl : null;
   const isSvg = logoUrl && (logoUrl.endsWith('.svg') || logoUrl.includes('format=svg'));
@@ -59,19 +75,11 @@ const Preloader: React.FC = () => {
       {loading && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, pointerEvents: "none" }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          onTouchStart={() => {
-            setLoading(false);
-            if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
-            if (typeof document !== "undefined") document.body.style.overflow = "";
-          }}
-          onClick={() => {
-            setLoading(false);
-            if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
-            if (typeof document !== "undefined") document.body.style.overflow = "";
-          }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black cursor-pointer"
+          onTouchStart={dismiss}
+          onClick={dismiss}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black pointer-events-none cursor-pointer"
         >
           <motion.div
             initial={{ opacity: 0 }}

@@ -36,15 +36,16 @@ const TopBarComponent = () => {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
-  if (!messages) {
-    return null;
-  }
+  const defaultMessages = [
+    { title: "WELCOME TO PEEDS PROFESSIONAL SPORTS • FREE SHIPPING NATIONWIDE" }
+  ];
+  const displayMessages = (messages && messages.length > 0) ? messages : defaultMessages;
 
   return (
     <div className="bg-[#1a0a2c] text-white py-2 px-4 relative border-b border-white/5">
       <div className="embla overflow-hidden max-w-7xl mx-auto" ref={emblaRef}>
         <div className="embla__container flex">
-          {messages?.map((message: any, index: number) => (
+          {displayMessages.map((message: any, index: number) => (
             <div key={index} className="embla__slide flex-[0_0_100%] min-w-0">
               <div className="text-center text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em]">
                 {message.title}
@@ -74,18 +75,22 @@ const TopBarComponent = () => {
           ))}
         </div>
       </div>
-      <button
-        className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
-        onClick={scrollPrev}
-      >
-        <ChevronLeft className="w-3 h-3" />
-      </button>
-      <button
-        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
-        onClick={scrollNext}
-      >
-        <ChevronRight className="w-3 h-3" />
-      </button>
+      {displayMessages.length > 1 && (
+        <>
+          <button
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+            onClick={scrollPrev}
+          >
+            <ChevronLeft className="w-3 h-3" />
+          </button>
+          <button
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+            onClick={scrollNext}
+          >
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </>
+      )}
     </div>
   );
 };

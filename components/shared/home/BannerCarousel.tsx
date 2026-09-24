@@ -265,18 +265,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
 
   const banners = currentBanners();
   if (banners.length === 0) {
-    if (error) {
-      return (
-        <div className={cn(`relative w-full ${isMobileView ? "h-[250px]" : "h-[85vh]"} flex items-center justify-center bg-gray-100`, className)}>
-          <div className="text-red-500">Error loading banners. Please try again later.</div>
-        </div>
-      );
-    }
-    return (
-      <div className={cn(`relative w-full ${isMobileView ? "h-[250px]" : "h-[85vh]"} flex items-center justify-center bg-gray-100`, className)}>
-        <div className="text-gray-500">No banners available.</div>
-      </div>
-    );
+    return null;
   }
 
   return (

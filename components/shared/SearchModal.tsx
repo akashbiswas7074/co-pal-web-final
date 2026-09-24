@@ -45,10 +45,12 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
 
   // Load recent searches from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('recentSearches');
-    if (saved) {
-      setRecentSearches(JSON.parse(saved));
-    }
+    try {
+      const saved = localStorage.getItem('recentSearches');
+      if (saved) {
+        setRecentSearches(JSON.parse(saved));
+      }
+    } catch (e) {}
   }, []);
 
   // Save search to recent searches
@@ -56,14 +58,18 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
     if (searchTerm.trim()) {
       const updated = [searchTerm, ...recentSearches.filter(s => s !== searchTerm)].slice(0, 5);
       setRecentSearches(updated);
-      localStorage.setItem('recentSearches', JSON.stringify(updated));
+      try {
+        localStorage.setItem('recentSearches', JSON.stringify(updated));
+      } catch (e) {}
     }
   };
 
   // Clear recent searches
   const clearRecentSearches = () => {
     setRecentSearches([]);
-    localStorage.removeItem('recentSearches');
+    try {
+      localStorage.removeItem('recentSearches');
+    } catch (e) {}
   };
 
   // Load categories

@@ -12,14 +12,13 @@ interface TickerItem {
 }
 
 const defaultItems: TickerItem[] = [
-    { emoji: '🌿', label: 'Vegan & Cruelty-Free' },
-    { emoji: '💧', label: 'Long-Lasting Formula' },
-    { emoji: '🤝', label: 'Handcrafted In The USA' },
-    { emoji: '❌', label: 'Free Of Harmful Chemicals' },
-    { emoji: '🌍', label: 'Shipping Worldwide' },
-    { emoji: '⭐', label: 'Premium Quality' },
-    { emoji: '🎁', label: 'Exclusive Collections' },
+    { emoji: '⚡', label: 'Pro Athletic Gears' },
+    { emoji: '🇮🇳', label: 'Handcrafted In India' },
+    { emoji: '🚚', label: 'Shipping Nationwide' },
+    { emoji: '⭐', label: 'Uncompromised Quality' },
+    { emoji: '🏃', label: 'Engineered For Performance' },
     { emoji: '✨', label: '100% Authentic Products' },
+    { emoji: '🥇', label: 'Athlete Grade Standards' },
 ];
 
 export default function StatsTicker() {
