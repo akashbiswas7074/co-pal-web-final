@@ -75,7 +75,7 @@ const BottomNavigationBar = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-t-lg z-50 lg:hidden" suppressHydrationWarning>
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-t-lg z-50 lg:hidden pb-[env(safe-area-inset-bottom,0px)]" suppressHydrationWarning>
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => (
           <NavItem

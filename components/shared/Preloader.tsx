@@ -11,29 +11,42 @@ const Preloader: React.FC = () => {
   const { settings, isLoading: logoLoading } = usePreloaderSettings();
 
   useEffect(() => {
-    // Allow full 3.2s animation to finish completely (logo path drawing takes 3s)
+    // Check if preloader was already shown in this session
+    if (typeof window !== "undefined") {
+      const alreadyShown = sessionStorage.getItem("peeds_preloader_shown");
+      if (alreadyShown) {
+        setLoading(false);
+        if (typeof document !== "undefined") document.body.style.overflow = "";
+        return;
+      }
+    }
+
+    // If settings are evaluated and preloader is not enabled, dismiss immediately
+    if (!logoLoading && !settings.isActive) {
+      setLoading(false);
+      if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+      if (typeof document !== "undefined") document.body.style.overflow = "";
+      return;
+    }
+
+    // Snappy duration for animation
     const timer = setTimeout(() => {
       setLoading(false);
-      if (typeof document !== "undefined") {
-        document.body.style.overflow = "";
-      }
-    }, 3200); 
+      if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+      if (typeof document !== "undefined") document.body.style.overflow = "";
+    }, 1500); 
 
     return () => {
       clearTimeout(timer);
-      if (typeof document !== "undefined") {
-        document.body.style.overflow = "";
-      }
+      if (typeof document !== "undefined") document.body.style.overflow = "";
     };
-  }, [logoLoading]);
+  }, [logoLoading, settings.isActive]);
 
-  // If loading is done, unmount immediately so it cannot block touch events
-  if (!loading) return null;
+  // If loading is done or inactive, unmount immediately so it cannot block touch events
+  if (!loading || (!logoLoading && !settings.isActive)) return null;
 
   // Prevent flashing before logo settings are evaluated
-  if (logoLoading) return (
-     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black pointer-events-none" />
-  );
+  if (logoLoading) return null;
 
   // If the preloader setting is inactive or there's no custom URL, fallback to default geometric paths
   const logoUrl = settings.isActive && settings.logoUrl ? settings.logoUrl : null;
@@ -47,8 +60,18 @@ const Preloader: React.FC = () => {
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, pointerEvents: "none" }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black pointer-events-auto"
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          onTouchStart={() => {
+            setLoading(false);
+            if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+            if (typeof document !== "undefined") document.body.style.overflow = "";
+          }}
+          onClick={() => {
+            setLoading(false);
+            if (typeof window !== "undefined") sessionStorage.setItem("peeds_preloader_shown", "true");
+            if (typeof document !== "undefined") document.body.style.overflow = "";
+          }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black cursor-pointer"
         >
           <motion.div
             initial={{ opacity: 0 }}

@@ -357,30 +357,47 @@
   }
 }
 
-/* iOS WebKit smoothness, touch delegation & tap highlight cleanup */
+/* iOS WebKit smoothness & tap highlight cleanup */
 html,
 body {
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Force pointer cursor on all interactive elements so iOS Safari delegates touch events properly */
-[onClick],
+/* iOS Safari & WebKit Touch Delegation:
+   Ensures buttons, links, inputs, and interactive elements register instant taps without delay or dropped clicks */
 button,
 a,
 input,
 select,
 textarea,
+label,
+summary,
 [role="button"],
-[tabindex],
-.cursor-pointer {
+[role="link"],
+[role="tab"],
+[role="checkbox"],
+[role="radio"],
+[role="switch"],
+[tabindex]:not([tabindex="-1"]),
+.cursor-pointer,
+[data-clickable="true"] {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area padding utilities for iOS devices with notch & home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .scroll-touch {
